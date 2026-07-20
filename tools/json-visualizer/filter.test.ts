@@ -58,6 +58,60 @@ describe("filterJson", () => {
     });
   });
 
+  it("matches wildcard property names from the specification", () => {
+    const input: JsonValue = {
+      zxc: 1,
+      zxcvd: 2,
+      zxckmam: 3,
+      ZXCUpper: 4,
+      azxc: 5,
+      other: 6,
+    };
+
+    expect(filterJson(input, parseFilter("zxc*")).value).toEqual({
+      zxc: 1,
+      zxcvd: 2,
+      zxckmam: 3,
+      ZXCUpper: 4,
+    });
+  });
+
+  it("supports wildcards anywhere in plain selector names", () => {
+    const input: JsonValue = {
+      preMiddlePost: 1,
+      prePost: 2,
+      anotherPost: 3,
+      unrelated: 4,
+    };
+
+    expect(filterJson(input, parseFilter("pre*post,*another*")).value).toEqual({
+      preMiddlePost: 1,
+      prePost: 2,
+      anotherPost: 3,
+    });
+  });
+
+  it("supports wildcard bracket parents and children, including array items", () => {
+    const input: JsonValue = {
+      recordsPrimary: [
+        { userName: "Ada", userId: 1, ignored: true },
+        { ignored: true },
+      ],
+      recordsArchive: { userEmail: "ada@example.test", ignored: true },
+      unrelated: { userName: "No match" },
+    };
+
+    expect(filterJson(input, parseFilter("records*[user*]")).value).toEqual({
+      recordsPrimary: [{ userName: "Ada", userId: 1 }],
+      recordsArchive: { userEmail: "ada@example.test" },
+    });
+  });
+
+  it("treats a standalone wildcard as matching every property", () => {
+    const input: JsonValue = { a: 1, nested: { b: 2 } };
+    expect(filterJson(input, parseFilter("*")).value).toEqual(input);
+  });
+
   it("unions mixed and duplicate bracket clauses", () => {
     const input: JsonValue = { outer: { Meta: { First: 1, second: 2, third: 3 } } };
     expect(filterJson(input, parseFilter("meta[first],META[second],third")).value).toEqual({

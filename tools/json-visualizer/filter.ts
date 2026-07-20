@@ -160,31 +160,78 @@ function normalizeName(name: string): string {
   return name.toLowerCase();
 }
 
+interface NamePattern {
+  segments: string[];
+  startsWithWildcard: boolean;
+  endsWithWildcard: boolean;
+}
+
+function compileNamePattern(name: string): NamePattern {
+  const normalized = normalizeName(name);
+  return {
+    segments: normalized.split("*"),
+    startsWithWildcard: normalized.startsWith("*"),
+    endsWithWildcard: normalized.endsWith("*"),
+  };
+}
+
+function matchesNamePattern(name: string, pattern: NamePattern): boolean {
+  const normalized = normalizeName(name);
+  const segments = pattern.segments.filter(Boolean);
+
+  if (segments.length === 0) return true;
+
+  let position = 0;
+  for (const [index, segment] of segments.entries()) {
+    if (index === 0 && !pattern.startsWithWildcard) {
+      if (!normalized.startsWith(segment)) return false;
+      position = segment.length;
+      continue;
+    }
+
+    const matchPosition = normalized.indexOf(segment, position);
+    if (matchPosition === -1) return false;
+    position = matchPosition + segment.length;
+  }
+
+  return pattern.endsWithWildcard || normalized.endsWith(segments.at(-1) ?? "");
+}
+
+function matchesAnyPattern(name: string, patterns?: readonly NamePattern[]): boolean {
+  return patterns?.some((pattern) => matchesNamePattern(name, pattern)) ?? false;
+}
+
 function isObject(value: JsonValue): value is { [key: string]: JsonValue } {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
 export function filterJson(value: JsonValue, clauses: FilterClause[]): FilterResult {
-  const plainNames = new Set<string>();
-  const bracketNames = new Map<string, Set<string>>();
+  const plainPatterns: NamePattern[] = [];
+  const bracketPatterns: Array<{ parent: NamePattern; children: NamePattern[] }> = [];
 
   for (const clause of clauses) {
     if (clause.type === "plain") {
-      plainNames.add(normalizeName(clause.name));
+      plainPatterns.push(compileNamePattern(clause.name));
       continue;
     }
 
-    const parentName = normalizeName(clause.name);
-    const children = bracketNames.get(parentName) ?? new Set<string>();
-    for (const child of clause.children) children.add(normalizeName(child));
-    bracketNames.set(parentName, children);
+    bracketPatterns.push({
+      parent: compileNamePattern(clause.name),
+      children: clause.children.map(compileNamePattern),
+    });
   }
 
-  function visit(current: JsonValue, directNames?: ReadonlySet<string>): FilterResult {
+  function directPatternsFor(name: string): NamePattern[] {
+    return bracketPatterns.flatMap((clause) =>
+      matchesNamePattern(name, clause.parent) ? clause.children : [],
+    );
+  }
+
+  function visit(current: JsonValue, directPatterns?: readonly NamePattern[]): FilterResult {
     if (Array.isArray(current)) {
       const result: JsonValue[] = [];
       for (const item of current) {
-        const filtered = visit(item, isObject(item) ? directNames : undefined);
+        const filtered = visit(item, isObject(item) ? directPatterns : undefined);
         if (filtered.matched) result.push(filtered.value);
       }
       return { matched: result.length > 0, value: result };
@@ -196,15 +243,14 @@ export function filterJson(value: JsonValue, clauses: FilterClause[]): FilterRes
     let matched = false;
 
     for (const [key, child] of Object.entries(current)) {
-      const normalizedKey = normalizeName(key);
-      if (plainNames.has(normalizedKey) || directNames?.has(normalizedKey)) {
+      if (matchesAnyPattern(key, plainPatterns) || matchesAnyPattern(key, directPatterns)) {
         result[key] = child;
         matched = true;
         continue;
       }
 
       const childDirectNames =
-        isObject(child) || Array.isArray(child) ? bracketNames.get(normalizedKey) : undefined;
+        isObject(child) || Array.isArray(child) ? directPatternsFor(key) : undefined;
       const filtered = visit(child, childDirectNames);
       if (filtered.matched) {
         result[key] = filtered.value;

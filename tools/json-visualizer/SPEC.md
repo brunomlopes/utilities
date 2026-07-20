@@ -10,6 +10,7 @@ The filter to apply is described as follows:
 - "a,b,c" shows all objects where there is at least one sub-property with those names
 - "x[a,b,c]" shows all object, where there is at least one sub-property x with one of these names
 - when x is an array, "x[a],b" should apply the "a" filter to all items on the array x. 
+- * can be used to wildcard properties. "zxc*" should match "zxc","zxcvd","zxckmam"
 
 
 ### Examples
