@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useState } from "react";
-import { filterJson, FilterSyntaxError, parseFilter, type JsonValue } from "@/lib/filter";
+import { filterJson, FilterSyntaxError, parseFilter, type JsonValue } from "./filter";
 
 const DEBOUNCE_MS = 250;
 

@@ -3,8 +3,11 @@ import type { ReactNode } from "react";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "JSON Visualizer",
-  description: "Filter JSON locally in your browser.",
+  title: {
+    default: "Utilities",
+    template: "%s | Utilities",
+  },
+  description: "Useful browser-only tools that keep your data on your device.",
 };
 
 export const viewport: Viewport = {

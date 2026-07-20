@@ -1,0 +1,137 @@
+.page {
+  width: 100%;
+  min-height: 100dvh;
+  padding: clamp(32px, 6vw, 88px) clamp(20px, 6vw, 92px);
+}
+
+.hero {
+  display: grid;
+  max-width: 920px;
+  margin-bottom: clamp(56px, 9vw, 124px);
+}
+
+.eyebrow {
+  margin: 0 0 12px;
+  color: var(--accent-dark);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.hero h1 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(4rem, 12vw, 10rem);
+  font-weight: 500;
+  letter-spacing: -0.065em;
+  line-height: 0.84;
+}
+
+.intro {
+  max-width: 620px;
+  margin: clamp(24px, 4vw, 44px) 0 0;
+  color: var(--muted);
+  font-size: clamp(1rem, 1.5vw, 1.25rem);
+  line-height: 1.65;
+}
+
+.catalog {
+  width: 100%;
+}
+
+.catalogHeading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 24px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 18px;
+}
+
+.catalogHeading h2 {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.catalogHeading span,
+.cardNumber {
+  color: var(--accent);
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr));
+  gap: 18px;
+}
+
+.card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  min-height: 210px;
+  padding: clamp(22px, 3vw, 34px);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  color: var(--ink);
+  background: var(--panel);
+  box-shadow: 0 14px 44px rgb(30 42 37 / 7%);
+  gap: 20px;
+  text-decoration: none;
+  transition: border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+}
+
+.card:hover {
+  border-color: rgb(23 78 71 / 45%);
+  box-shadow: 0 20px 55px rgb(30 42 37 / 12%);
+  transform: translateY(-2px);
+}
+
+.card:focus-visible {
+  outline: 3px solid rgb(23 78 71 / 24%);
+  outline-offset: 3px;
+}
+
+.card h3 {
+  margin: 0 0 12px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(1.75rem, 3vw, 2.6rem);
+  font-weight: 500;
+  letter-spacing: -0.035em;
+}
+
+.card p {
+  max-width: 560px;
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.arrow {
+  color: var(--teal);
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+@media (max-width: 560px) {
+  .card {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .arrow {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card {
+    transition: none;
+  }
+}

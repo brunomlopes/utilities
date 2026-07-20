@@ -1,6 +1,6 @@
-# JSON Visualizer
+# Utilities
 
-A browser-only Next.js application for pruning JSON documents by property name. JSON parsing and filtering happen entirely in the current browser tab; there are no API routes, server actions, or runtime server dependencies.
+A collection of focused, browser-only utilities built with Next.js, React, and TypeScript. Every utility runs locally in the browser and the complete suite exports as static HTML, CSS, and JavaScript.
 
 ## Development
 
@@ -18,17 +18,22 @@ npm test
 npm run build
 ```
 
-## Filter syntax
+## Utilities
 
-- `a,b,c` keeps properties with any of those names, wherever they occur, plus the ancestor structure needed to reach them.
-- `x[a,b,c]` finds `x` properties anywhere and keeps matching direct children. When `x` is an array, the child filter is applied to every object item and unmatched items are removed.
-- Forms can be mixed as a union: `a,z[b],"x,y"[c,d]`.
-- Names match case-insensitively. Bare names are trimmed. Double-quoted names use JSON string escaping and allow commas, brackets, or significant surrounding whitespace.
-- A matching property retains its complete value. Within arrays, unmatched elements are removed and matching elements keep their original order.
+- [JSON Visualizer](tools/json-visualizer/README.md) — filter JSON by property name while preserving matching structure.
+
+Each utility keeps its implementation, tests, styles, README, and optional specification under `tools/<slug>/`. Its static App Router page lives at `app/<slug>/page.tsx`, and its homepage metadata is registered in `tools/registry.ts`.
+
+## Adding a utility
+
+1. Create `tools/<slug>/` with the utility implementation, tests, README, and optional `SPEC.md`.
+2. Add a static route under `app/<slug>/` that renders the utility.
+3. Add its title, description, slug, and route to `tools/registry.ts`.
+4. Verify tests, type checking, linting, and the static export.
 
 ## Static deployment
 
-`npm run build` creates the static site in `out/`. Serve that directory from any HTTP static file server; Node.js is not needed after the build.
+`npm run build` creates the deployable site in `out/`. Serve that directory with any HTTP static file server; Node.js is not required after the build.
 
 For a domain-root deployment:
 
@@ -36,17 +41,17 @@ For a domain-root deployment:
 npm run build
 ```
 
-For a subpath deployment, provide the public mount path at build time:
+For a subpath deployment:
 
 ```sh
-APP_BASE_PATH=/json-visualizer npm run build
+APP_BASE_PATH=/utilities npm run build
 ```
 
 On PowerShell:
 
 ```powershell
-$env:APP_BASE_PATH = "/json-visualizer"
+$env:APP_BASE_PATH = "/utilities"
 npm run build
 ```
 
-Mount the resulting `out/` directory at the same URL path. `APP_BASE_PATH` must begin with `/`, must not end with `/`, and requires a rebuild when changed.
+Mount `out/` at the same URL path. `APP_BASE_PATH` must begin with `/`, must not end with `/`, and requires a rebuild when changed.
