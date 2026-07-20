@@ -44,6 +44,13 @@ describe("filterJson", () => {
     expect(filterJson(example, parseFilter("z[b]")).value).toEqual({ z: { b: 1 } });
   });
 
+  it("implements example 2 by filtering every item in an array-valued parent", () => {
+    expect(filterJson(example, parseFilter("sjaiodf[a],basfsdf")).value).toEqual({
+      sjaiodf: [{ a: 42 }],
+      basfsdf: "jas sadf s",
+    });
+  });
+
   it("matches case-insensitively while preserving keys and complete values", () => {
     const input: JsonValue = { Wrapper: { NAME: { nested: [1, 2] }, other: true } };
     expect(filterJson(input, parseFilter("name")).value).toEqual({
@@ -58,13 +65,14 @@ describe("filterJson", () => {
     });
   });
 
-  it("applies bracket children only to direct object properties", () => {
+  it("applies bracket children to direct object properties and direct array items", () => {
     const input: JsonValue = {
       x: { nested: { a: 1 }, a: { complete: true } },
-      arrayParent: [{ a: 2 }],
+      arrayParent: [{ a: 2, ignored: true }, { ignored: true }, { nested: { a: 3 } }],
     };
     expect(filterJson(input, parseFilter("x[a],arrayParent[a]")).value).toEqual({
       x: { a: { complete: true } },
+      arrayParent: [{ a: 2 }],
     });
   });
 

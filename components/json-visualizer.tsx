@@ -119,7 +119,8 @@ export function JsonVisualizer() {
             aria-describedby={filterDescribedBy}
           />
           <p id={filterHelpId} className="filter-help">
-            Use <code>a,b</code> for keys anywhere or <code>x[a,b]</code> for direct children.
+            Use <code>a,b</code> for keys anywhere or <code>x[a,b]</code> for direct children,
+            including items in an <code>x</code> array.
           </p>
           <p
             id={filterErrorId}

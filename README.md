@@ -21,7 +21,7 @@ npm run build
 ## Filter syntax
 
 - `a,b,c` keeps properties with any of those names, wherever they occur, plus the ancestor structure needed to reach them.
-- `x[a,b,c]` finds `x` properties anywhere and keeps matching direct children of object-valued `x` properties.
+- `x[a,b,c]` finds `x` properties anywhere and keeps matching direct children. When `x` is an array, the child filter is applied to every object item and unmatched items are removed.
 - Forms can be mixed as a union: `a,z[b],"x,y"[c,d]`.
 - Names match case-insensitively. Bare names are trimmed. Double-quoted names use JSON string escaping and allow commas, brackets, or significant surrounding whitespace.
 - A matching property retains its complete value. Within arrays, unmatched elements are removed and matching elements keep their original order.

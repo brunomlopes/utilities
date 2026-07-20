@@ -184,7 +184,7 @@ export function filterJson(value: JsonValue, clauses: FilterClause[]): FilterRes
     if (Array.isArray(current)) {
       const result: JsonValue[] = [];
       for (const item of current) {
-        const filtered = visit(item);
+        const filtered = visit(item, isObject(item) ? directNames : undefined);
         if (filtered.matched) result.push(filtered.value);
       }
       return { matched: result.length > 0, value: result };
@@ -203,7 +203,8 @@ export function filterJson(value: JsonValue, clauses: FilterClause[]): FilterRes
         continue;
       }
 
-      const childDirectNames = isObject(child) ? bracketNames.get(normalizedKey) : undefined;
+      const childDirectNames =
+        isObject(child) || Array.isArray(child) ? bracketNames.get(normalizedKey) : undefined;
       const filtered = visit(child, childDirectNames);
       if (filtered.matched) {
         result[key] = filtered.value;
