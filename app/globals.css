@@ -40,10 +40,12 @@ textarea {
 }
 
 .app-shell {
-  width: min(1500px, 100%);
+  display: flex;
+  width: 100%;
+  height: 100dvh;
   min-height: 100vh;
-  margin: 0 auto;
   padding: 40px clamp(18px, 4vw, 64px) 48px;
+  flex-direction: column;
 }
 
 .hero {
@@ -89,8 +91,9 @@ h1 {
 .workspace {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  min-height: 660px;
+  min-height: 0;
   overflow: hidden;
+  flex: 1;
   border: 1px solid var(--line);
   border-radius: 22px;
   background: var(--panel);
@@ -100,6 +103,7 @@ h1 {
 .pane {
   display: flex;
   min-width: 0;
+  min-height: 0;
   padding: clamp(20px, 3vw, 34px);
   flex-direction: column;
 }
@@ -179,7 +183,7 @@ h2,
 }
 
 .code-area {
-  min-height: 470px;
+  min-height: 0;
   padding: 18px;
   resize: vertical;
   flex: 1;
@@ -195,7 +199,6 @@ h2,
 }
 
 .output-area {
-  min-height: 340px;
   background: #f9f8f2;
 }
 
@@ -287,6 +290,7 @@ h2,
 
 @media (max-width: 800px) {
   .app-shell {
+    height: auto;
     padding-top: 28px;
   }
 
@@ -298,6 +302,7 @@ h2,
 
   .workspace {
     grid-template-columns: 1fr;
+    flex: none;
   }
 
   .input-pane {
