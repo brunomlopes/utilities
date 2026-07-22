@@ -20,6 +20,8 @@ npm run build
 
 ## Utilities
 
+- [Excel–Sheets Interchange](tools/excel-sheets-interchange/README.md) — convert pasted spreadsheet numbers between English and Portuguese cultures.
+
 - [JSON Visualizer](tools/json-visualizer/README.md) — filter JSON by property name while preserving matching structure.
 
 Each utility keeps its implementation, tests, styles, README, and optional specification under `tools/<slug>/`. Its static App Router page lives at `app/<slug>/page.tsx`, and its homepage metadata is registered in `tools/registry.ts`.
