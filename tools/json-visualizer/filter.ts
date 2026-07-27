@@ -161,6 +161,7 @@ function normalizeName(name: string): string {
 }
 
 interface NamePattern {
+  exactName: string | null;
   segments: string[];
   startsWithWildcard: boolean;
   endsWithWildcard: boolean;
@@ -168,7 +169,9 @@ interface NamePattern {
 
 function compileNamePattern(name: string): NamePattern {
   const normalized = normalizeName(name);
+  const hasWildcard = normalized.includes("*");
   return {
+    exactName: hasWildcard ? null : normalized,
     segments: normalized.split("*"),
     startsWithWildcard: normalized.startsWith("*"),
     endsWithWildcard: normalized.endsWith("*"),
@@ -177,6 +180,8 @@ function compileNamePattern(name: string): NamePattern {
 
 function matchesNamePattern(name: string, pattern: NamePattern): boolean {
   const normalized = normalizeName(name);
+  if (pattern.exactName !== null) return normalized === pattern.exactName;
+
   const segments = pattern.segments.filter(Boolean);
 
   if (segments.length === 0) return true;

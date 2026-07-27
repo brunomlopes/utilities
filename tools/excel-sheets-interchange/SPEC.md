@@ -25,6 +25,7 @@ Input.1 - We consider that text is a tab-separated sequence of either strings or
 Input.2 - Numbers are interpreted using the culture selected for the input
 Input.3 - Any currency symbol is removed
 Input.4 - If a cell contains just - , or a currency symbol and -, it is considered to be the number 0
+Input.5 - A space can be interpreted as a thousands separator
 
 The output text box is then filled with the same sequence:
 Output.1 - Numbers are converted to strings using the culture selected for the output

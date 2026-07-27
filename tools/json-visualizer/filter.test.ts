@@ -58,6 +58,38 @@ describe("filterJson", () => {
     });
   });
 
+  it("requires exact names without wildcards and supports prefix and suffix wildcards", () => {
+    const input: JsonValue = {
+      id: 1,
+      ideaSubmissionId: 2,
+      templateId: 3,
+      unrelated: 4,
+    };
+
+    expect(filterJson(input, parseFilter("id")).value).toEqual({ id: 1 });
+    expect(filterJson(input, parseFilter("id*")).value).toEqual({
+      id: 1,
+      ideaSubmissionId: 2,
+    });
+    expect(filterJson(input, parseFilter("*id")).value).toEqual({
+      id: 1,
+      ideaSubmissionId: 2,
+      templateId: 3,
+    });
+  });
+
+  it("uses exact and wildcard matching for bracket parents and children", () => {
+    const input: JsonValue = {
+      record: { id: 1, templateId: 2 },
+      recordArchive: { id: 3, templateId: 4 },
+    };
+
+    expect(filterJson(input, parseFilter("record[id]")).value).toEqual({
+      record: { id: 1 },
+    });
+    expect(filterJson(input, parseFilter("record*[*id]")).value).toEqual(input);
+  });
+
   it("matches wildcard property names from the specification", () => {
     const input: JsonValue = {
       zxc: 1,
