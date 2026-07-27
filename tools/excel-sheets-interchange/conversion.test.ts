@@ -12,6 +12,17 @@ describe("convertCell", () => {
     expect(convertCell("001.234,5000", "pt", "en")).toBe("001234.5000");
   });
 
+  it("accepts common space characters as thousands separators", () => {
+    expect(convertCell("1 234 567.8900", "en", "pt")).toBe("1234567,8900");
+    expect(convertCell("-1\u00a0234\u00a0567,8900", "pt", "en")).toBe("-1234567.8900");
+    expect(convertCell("+1\u202f234\u202f567,8900", "pt", "en")).toBe("+1234567.8900");
+  });
+
+  it("supports currencies around space-grouped numbers", () => {
+    expect(convertCell(" € 1 234,50 ", "pt", "en")).toBe("1234.50");
+    expect(convertCell("$-1\u00a0234.50", "en", "pt")).toBe("-1234,50");
+  });
+
   it("preserves signs and supports decimals without a leading zero", () => {
     expect(convertCell("-12.50", "en", "pt")).toBe("-12,50");
     expect(convertCell("+,75", "pt", "en")).toBe("+.75");
@@ -37,6 +48,12 @@ describe("convertCell", () => {
       "25%",
       "(1,000.00)",
       "1,23",
+      "1 23.45",
+      "1  234.56",
+      "1 234 56.78",
+      "1 234,567.89",
+      "1 234.5 6",
+      "forecast 1 234",
       "=SUM(A1:A2)",
       "not-available",
     ]) {
@@ -61,6 +78,16 @@ describe("convertTabSeparatedText", () => {
   it("converts dash placeholders without changing the TSV structure", () => {
     expect(convertTabSeparatedText("-\t$-\t\n€ -\t- £\tlabel", "en", "pt")).toBe(
       "0\t0\t\n0\t0\tlabel",
+    );
+  });
+
+  it("converts space-grouped numbers without changing the TSV structure", () => {
+    const input = "Name\tAmount\r\nAlpha\t1 234.50\nBeta\t€ 2\u202f345,75";
+    expect(convertTabSeparatedText(input, "en", "pt")).toBe(
+      "Name\tAmount\r\nAlpha\t1234,50\nBeta\t€ 2\u202f345,75",
+    );
+    expect(convertTabSeparatedText(input, "pt", "en")).toBe(
+      "Name\tAmount\r\nAlpha\t1 234.50\nBeta\t2345.75",
     );
   });
 });

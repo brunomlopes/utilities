@@ -23,6 +23,8 @@ const CULTURE_SEPARATORS: Record<Culture, { decimal: string; grouping: string }>
 
 const CURRENCY_SYMBOL_PATTERN = /\p{Sc}/gu;
 const CELL_SEPARATOR_PATTERN = /^(?:\t|\r\n|\r|\n)$/;
+const SPACE_GROUPING_PATTERN = /[ \u00a0\u202f]/gu;
+const SPACE_GROUPING_CHARACTER_CLASS = "[ \\u00a0\\u202f]";
 
 function escapeForRegularExpression(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -85,12 +87,14 @@ export function convertCell(cell: string, sourceCulture: Culture, targetCulture:
   const { decimal, grouping } = CULTURE_SEPARATORS[sourceCulture];
   const escapedDecimal = escapeForRegularExpression(decimal);
   const escapedGrouping = escapeForRegularExpression(grouping);
-  const integer = `(?:\\d+|\\d{1,3}(?:${escapedGrouping}\\d{3})+)`;
+  const cultureGroupedInteger = `\\d{1,3}(?:${escapedGrouping}\\d{3})+`;
+  const spaceGroupedInteger = `\\d{1,3}(?:${SPACE_GROUPING_CHARACTER_CLASS}\\d{3})+`;
+  const integer = `(?:\\d+|${cultureGroupedInteger}|${spaceGroupedInteger})`;
   const numberPattern = new RegExp(`^[+-]?(?:${integer}(?:${escapedDecimal}\\d+)?|${escapedDecimal}\\d+)$`);
 
   if (!numberPattern.test(candidate)) return cell;
 
-  const ungrouped = candidate.split(grouping).join("");
+  const ungrouped = candidate.split(grouping).join("").replace(SPACE_GROUPING_PATTERN, "");
   const decimalIndex = ungrouped.indexOf(decimal);
   if (decimalIndex === -1) return ungrouped;
 
