@@ -15,6 +15,8 @@ The filter to apply is described as follows:
 ### UI behaviour
 
 - UI.1 When json is pasted on the input, auto-format the json file. Add a button to revert auto-format
+- UI.2 The filter text box should increase vertically in size when the filter no longer fits
+- UI.3 On the input side of the UI, there is a button to load a json file. It takes the file and loads it to the json input
 
 ### Examples
 

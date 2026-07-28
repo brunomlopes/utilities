@@ -81,6 +81,75 @@ describe("JsonVisualizer", () => {
     expect(screen.getByLabelText("Source JSON")).toHaveValue('{\n  "a": 2\n}');
   });
 
+  it("uses a one-row textarea and throttles filter height measurements", () => {
+    render(<JsonVisualizer />);
+    const filterInput = screen.getByLabelText<HTMLTextAreaElement>("Filter expression");
+    let scrollHeight = 44;
+    const readScrollHeight = vi.fn(() => scrollHeight);
+
+    Object.defineProperty(filterInput, "scrollHeight", {
+      configurable: true,
+      get: readScrollHeight,
+    });
+
+    expect(filterInput.tagName).toBe("TEXTAREA");
+    expect(filterInput.rows).toBe(1);
+
+    fireEvent.change(filterInput, { target: { value: "a" } });
+    expect(filterInput.style.height).toBe("44px");
+    expect(readScrollHeight).toHaveBeenCalledTimes(1);
+
+    scrollHeight = 88;
+    fireEvent.change(filterInput, { target: { value: "a,b" } });
+    fireEvent.change(filterInput, { target: { value: "a,b,c" } });
+    expect(readScrollHeight).toHaveBeenCalledTimes(1);
+
+    act(() => vi.advanceTimersByTime(249));
+    expect(readScrollHeight).toHaveBeenCalledTimes(1);
+
+    act(() => vi.advanceTimersByTime(1));
+    expect(filterInput.style.height).toBe("88px");
+    expect(readScrollHeight).toHaveBeenCalledTimes(2);
+
+    scrollHeight = 44;
+    fireEvent.change(filterInput, { target: { value: "a" } });
+    act(() => vi.advanceTimersByTime(250));
+    expect(filterInput.style.height).toBe("44px");
+    expect(readScrollHeight).toHaveBeenCalledTimes(3);
+  });
+
+  it("throttles viewport-driven filter resizing", () => {
+    render(<JsonVisualizer />);
+    const filterInput = screen.getByLabelText<HTMLTextAreaElement>("Filter expression");
+    let scrollHeight = 44;
+    const readScrollHeight = vi.fn(() => scrollHeight);
+
+    Object.defineProperty(filterInput, "scrollHeight", {
+      configurable: true,
+      get: readScrollHeight,
+    });
+
+    fireEvent.change(filterInput, { target: { value: "a" } });
+    scrollHeight = 72;
+    fireEvent.resize(window);
+    fireEvent.resize(window);
+
+    expect(readScrollHeight).toHaveBeenCalledTimes(1);
+    act(() => vi.advanceTimersByTime(250));
+    expect(filterInput.style.height).toBe("72px");
+    expect(readScrollHeight).toHaveBeenCalledTimes(2);
+  });
+
+  it("continues to evaluate multiline filter expressions", () => {
+    render(<JsonVisualizer />);
+    update('{"a":1,"b":2,"c":3}', "a,\nb");
+
+    act(() => vi.advanceTimersByTime(250));
+    expect(screen.getByLabelText("Filtered JSON output")).toHaveValue(
+      '{\n  "a": 1,\n  "b": 2\n}',
+    );
+  });
+
   it("updates the read-only output after the debounce", () => {
     render(<JsonVisualizer />);
     update('{"a":1,"b":2}', "a");

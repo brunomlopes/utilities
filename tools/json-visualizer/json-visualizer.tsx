@@ -1,9 +1,17 @@
 "use client";
 
-import { type ClipboardEvent, useEffect, useId, useState } from "react";
+import {
+  type ClipboardEvent,
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+} from "react";
 import { filterJson, FilterSyntaxError, parseFilter, type JsonValue } from "./filter";
 
 const DEBOUNCE_MS = 250;
+const FILTER_RESIZE_THROTTLE_MS = 250;
 
 interface PasteVersions {
   raw: string;
@@ -52,6 +60,44 @@ export function JsonVisualizer() {
   const [copyStatus, setCopyStatus] = useState("");
   const [pasteVersions, setPasteVersions] = useState<PasteVersions | null>(null);
   const [showingFormattedPaste, setShowingFormattedPaste] = useState(false);
+  const filterInputRef = useRef<HTMLTextAreaElement>(null);
+  const lastFilterResizeAtRef = useRef<number | null>(null);
+  const filterResizeTimeoutRef = useRef<number | null>(null);
+
+  const resizeFilterInput = useCallback(() => {
+    const input = filterInputRef.current;
+    if (!input) return;
+
+    input.style.height = "auto";
+    const styles = window.getComputedStyle(input);
+    const borderHeight =
+      (Number.parseFloat(styles.borderTopWidth) || 0) +
+      (Number.parseFloat(styles.borderBottomWidth) || 0);
+    input.style.height = `${input.scrollHeight + borderHeight}px`;
+    lastFilterResizeAtRef.current = Date.now();
+  }, []);
+
+  const scheduleFilterResize = useCallback(() => {
+    const lastResizeAt = lastFilterResizeAtRef.current;
+    const elapsed =
+      lastResizeAt === null ? FILTER_RESIZE_THROTTLE_MS : Date.now() - lastResizeAt;
+
+    if (elapsed >= FILTER_RESIZE_THROTTLE_MS) {
+      if (filterResizeTimeoutRef.current !== null) {
+        window.clearTimeout(filterResizeTimeoutRef.current);
+        filterResizeTimeoutRef.current = null;
+      }
+      resizeFilterInput();
+      return;
+    }
+
+    if (filterResizeTimeoutRef.current !== null) return;
+
+    filterResizeTimeoutRef.current = window.setTimeout(() => {
+      filterResizeTimeoutRef.current = null;
+      resizeFilterInput();
+    }, FILTER_RESIZE_THROTTLE_MS - elapsed);
+  }, [resizeFilterInput]);
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
@@ -61,6 +107,18 @@ export function JsonVisualizer() {
 
     return () => window.clearTimeout(timeout);
   }, [jsonText, filterText]);
+
+  useEffect(() => {
+    window.addEventListener("resize", scheduleFilterResize);
+
+    return () => {
+      window.removeEventListener("resize", scheduleFilterResize);
+      if (filterResizeTimeoutRef.current !== null) {
+        window.clearTimeout(filterResizeTimeoutRef.current);
+        filterResizeTimeoutRef.current = null;
+      }
+    };
+  }, [scheduleFilterResize]);
 
   async function copyOutput() {
     try {
@@ -160,15 +218,20 @@ export function JsonVisualizer() {
             <span className="step-number">02</span>
             Filter expression
           </label>
-          <input
+          <textarea
+            ref={filterInputRef}
             id="filter-input"
             className="filter-input"
             aria-label="Filter expression"
             value={filterText}
-            onChange={(event) => setFilterText(event.target.value)}
+            onChange={(event) => {
+              setFilterText(event.target.value);
+              scheduleFilterResize();
+            }}
             placeholder={'name,status,metadata["created,at"]'}
             spellCheck={false}
             autoComplete="off"
+            rows={1}
             aria-invalid={Boolean(evaluation.filterError)}
             aria-describedby={filterDescribedBy}
           />
