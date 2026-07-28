@@ -1,9 +1,14 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { type ClipboardEvent, useEffect, useId, useState } from "react";
 import { filterJson, FilterSyntaxError, parseFilter, type JsonValue } from "./filter";
 
 const DEBOUNCE_MS = 250;
+
+interface PasteVersions {
+  raw: string;
+  formatted: string;
+}
 
 interface Evaluation {
   output: string;
@@ -45,6 +50,8 @@ export function JsonVisualizer() {
   const [filterText, setFilterText] = useState("");
   const [evaluation, setEvaluation] = useState<Evaluation>(() => evaluate("", ""));
   const [copyStatus, setCopyStatus] = useState("");
+  const [pasteVersions, setPasteVersions] = useState<PasteVersions | null>(null);
+  const [showingFormattedPaste, setShowingFormattedPaste] = useState(false);
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
@@ -64,6 +71,42 @@ export function JsonVisualizer() {
     }
   }
 
+  function handleJsonChange(value: string) {
+    setJsonText(value);
+    setPasteVersions(null);
+    setShowingFormattedPaste(false);
+  }
+
+  function handleJsonPaste(event: ClipboardEvent<HTMLTextAreaElement>) {
+    const pastedText = event.clipboardData.getData("text");
+    const selectionStart = event.currentTarget.selectionStart;
+    const selectionEnd = event.currentTarget.selectionEnd;
+    const raw = `${jsonText.slice(0, selectionStart)}${pastedText}${jsonText.slice(selectionEnd)}`;
+
+    event.preventDefault();
+
+    try {
+      const parsed = JSON.parse(raw) as JsonValue;
+      const formatted = JSON.stringify(parsed, null, 2);
+
+      setPasteVersions({ raw, formatted });
+      setShowingFormattedPaste(true);
+      setJsonText(formatted);
+    } catch {
+      setPasteVersions(null);
+      setShowingFormattedPaste(false);
+      setJsonText(raw);
+    }
+  }
+
+  function togglePasteFormatting() {
+    if (!pasteVersions) return;
+
+    const showFormatted = !showingFormattedPaste;
+    setShowingFormattedPaste(showFormatted);
+    setJsonText(showFormatted ? pasteVersions.formatted : pasteVersions.raw);
+  }
+
   const filterDescribedBy = [filterHelpId, evaluation.filterError ? filterErrorId : null]
     .filter(Boolean)
     .join(" ");
@@ -76,7 +119,17 @@ export function JsonVisualizer() {
             <span className="step-number">01</span>
             <h2>Source JSON</h2>
           </div>
-          <span className="privacy-badge">Local only</span>
+          <div className="source-actions">
+            <button
+              type="button"
+              className="format-button"
+              onClick={togglePasteFormatting}
+              disabled={!pasteVersions}
+            >
+              {showingFormattedPaste ? "Revert formatting" : "Apply formatting"}
+            </button>
+            <span className="privacy-badge">Local only</span>
+          </div>
         </div>
         <label className="visually-hidden" htmlFor="json-input">
           Source JSON
@@ -85,7 +138,8 @@ export function JsonVisualizer() {
           id="json-input"
           className="code-area"
           value={jsonText}
-          onChange={(event) => setJsonText(event.target.value)}
+          onChange={(event) => handleJsonChange(event.target.value)}
+          onPaste={handleJsonPaste}
           placeholder={'{\n  "projects": [\n    { "name": "Atlas", "status": "active" }\n  ]\n}'}
           spellCheck={false}
           aria-invalid={Boolean(evaluation.jsonError)}

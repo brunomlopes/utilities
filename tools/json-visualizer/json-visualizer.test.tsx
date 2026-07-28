@@ -21,6 +21,66 @@ describe("JsonVisualizer", () => {
     fireEvent.change(screen.getByLabelText("Filter expression"), { target: { value: filter } });
   }
 
+  function paste(text: string) {
+    fireEvent.paste(screen.getByLabelText("Source JSON"), {
+      clipboardData: { getData: () => text },
+    });
+  }
+
+  it("auto-formats valid pasted JSON and toggles the exact raw text", () => {
+    render(<JsonVisualizer />);
+    const raw = ' { "a": 1, "nested": [true, null] } ';
+
+    paste(raw);
+
+    expect(screen.getByLabelText("Source JSON")).toHaveValue(
+      '{\n  "a": 1,\n  "nested": [\n    true,\n    null\n  ]\n}',
+    );
+
+    const toggle = screen.getByRole("button", { name: "Revert formatting" });
+    fireEvent.click(toggle);
+    expect(screen.getByLabelText("Source JSON")).toHaveValue(raw);
+
+    fireEvent.click(screen.getByRole("button", { name: "Apply formatting" }));
+    expect(screen.getByLabelText("Source JSON")).toHaveValue(
+      '{\n  "a": 1,\n  "nested": [\n    true,\n    null\n  ]\n}',
+    );
+  });
+
+  it("keeps invalid pasted JSON unchanged", () => {
+    render(<JsonVisualizer />);
+
+    paste(' { "a": } ');
+
+    expect(screen.getByLabelText("Source JSON")).toHaveValue(' { "a": } ');
+    expect(screen.getByRole("button", { name: "Apply formatting" })).toBeDisabled();
+    act(() => vi.advanceTimersByTime(250));
+    expect(screen.getByLabelText("Source JSON")).toHaveAttribute("aria-invalid", "true");
+  });
+
+  it("formats the complete value resulting from replacing a selection", () => {
+    render(<JsonVisualizer />);
+    const input = screen.getByLabelText<HTMLTextAreaElement>("Source JSON");
+    fireEvent.change(input, { target: { value: '{"a":BROKEN}' } });
+    input.setSelectionRange(5, 11);
+
+    paste("1");
+
+    expect(input).toHaveValue('{\n  "a": 1\n}');
+  });
+
+  it("disables the formatting toggle after a manual edit", () => {
+    render(<JsonVisualizer />);
+    paste('{"a":1}');
+
+    fireEvent.change(screen.getByLabelText("Source JSON"), {
+      target: { value: '{\n  "a": 2\n}' },
+    });
+
+    expect(screen.getByRole("button", { name: "Apply formatting" })).toBeDisabled();
+    expect(screen.getByLabelText("Source JSON")).toHaveValue('{\n  "a": 2\n}');
+  });
+
   it("updates the read-only output after the debounce", () => {
     render(<JsonVisualizer />);
     update('{"a":1,"b":2}', "a");

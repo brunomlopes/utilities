@@ -104,6 +104,10 @@
   gap: 11px;
 }
 
+.section-heading .source-actions {
+  justify-content: flex-end;
+}
+
 .tool-shell h2,
 .filter-block label {
   margin: 0;
@@ -204,6 +208,7 @@
   color: var(--teal);
 }
 
+.format-button,
 .copy-button {
   padding: 8px 13px;
   border: 1px solid var(--teal);
@@ -216,15 +221,18 @@
   transition: transform 120ms ease, opacity 120ms ease;
 }
 
+.format-button:hover:not(:disabled),
 .copy-button:hover:not(:disabled) {
   transform: translateY(-1px);
 }
 
+.format-button:focus-visible,
 .copy-button:focus-visible {
   outline: 3px solid rgb(23 78 71 / 24%);
   outline-offset: 2px;
 }
 
+.format-button:disabled,
 .copy-button:disabled {
   cursor: not-allowed;
   opacity: 0.38;
@@ -280,6 +288,15 @@
   .input-pane {
     border-right: 0;
     border-bottom: 1px solid var(--line);
+  }
+
+  .section-heading {
+    align-items: flex-start;
+  }
+
+  .section-heading .source-actions {
+    align-items: flex-end;
+    flex-direction: column-reverse;
   }
 
   .code-area {

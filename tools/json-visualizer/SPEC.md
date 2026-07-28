@@ -12,6 +12,9 @@ The filter to apply is described as follows:
 - when x is an array, "x[a],b" should apply the "a" filter to all items on the array x. 
 - * can be used to wildcard properties. "zxc*" should match "zxc","zxcvd","zxckmam"
 
+### UI behaviour
+
+- UI.1 When json is pasted on the input, auto-format the json file. Add a button to revert auto-format
 
 ### Examples
 
