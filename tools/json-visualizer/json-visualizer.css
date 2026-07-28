@@ -106,6 +106,7 @@
 }
 
 .section-heading .source-actions {
+  flex-wrap: wrap;
   justify-content: flex-end;
 }
 
@@ -216,6 +217,7 @@
   color: var(--teal);
 }
 
+.load-button,
 .format-button,
 .copy-button {
   padding: 8px 13px;
@@ -229,11 +231,13 @@
   transition: transform 120ms ease, opacity 120ms ease;
 }
 
+.load-button:hover:not(:disabled),
 .format-button:hover:not(:disabled),
 .copy-button:hover:not(:disabled) {
   transform: translateY(-1px);
 }
 
+.load-button:focus-visible,
 .format-button:focus-visible,
 .copy-button:focus-visible {
   outline: 3px solid rgb(23 78 71 / 24%);
@@ -263,6 +267,14 @@
 
 .copy-status {
   color: var(--teal);
+}
+
+.file-message {
+  color: var(--teal);
+}
+
+.file-message:empty {
+  display: none;
 }
 
 .visually-hidden {

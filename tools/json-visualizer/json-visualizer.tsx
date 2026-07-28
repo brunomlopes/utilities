@@ -2,6 +2,7 @@
 
 import {
   type ClipboardEvent,
+  type ChangeEvent,
   useCallback,
   useEffect,
   useId,
@@ -16,6 +17,11 @@ const FILTER_RESIZE_THROTTLE_MS = 250;
 interface PasteVersions {
   raw: string;
   formatted: string;
+}
+
+interface FileStatus {
+  message: string;
+  isError: boolean;
 }
 
 interface Evaluation {
@@ -60,6 +66,9 @@ export function JsonVisualizer() {
   const [copyStatus, setCopyStatus] = useState("");
   const [pasteVersions, setPasteVersions] = useState<PasteVersions | null>(null);
   const [showingFormattedPaste, setShowingFormattedPaste] = useState(false);
+  const [fileStatus, setFileStatus] = useState<FileStatus | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const fileLoadIdRef = useRef(0);
   const filterInputRef = useRef<HTMLTextAreaElement>(null);
   const lastFilterResizeAtRef = useRef<number | null>(null);
   const filterResizeTimeoutRef = useRef<number | null>(null);
@@ -133,6 +142,27 @@ export function JsonVisualizer() {
     setJsonText(value);
     setPasteVersions(null);
     setShowingFormattedPaste(false);
+    setFileStatus(null);
+  }
+
+  async function handleJsonFileChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    const loadId = ++fileLoadIdRef.current;
+    setFileStatus({ message: `Loading ${file.name}…`, isError: false });
+
+    try {
+      const text = await file.text();
+      if (loadId !== fileLoadIdRef.current) return;
+
+      handleJsonChange(text);
+      setFileStatus({ message: `Loaded ${file.name}.`, isError: false });
+    } catch {
+      if (loadId !== fileLoadIdRef.current) return;
+      setFileStatus({ message: `Could not load ${file.name}.`, isError: true });
+    }
   }
 
   function handleJsonPaste(event: ClipboardEvent<HTMLTextAreaElement>) {
@@ -142,6 +172,7 @@ export function JsonVisualizer() {
     const raw = `${jsonText.slice(0, selectionStart)}${pastedText}${jsonText.slice(selectionEnd)}`;
 
     event.preventDefault();
+    setFileStatus(null);
 
     try {
       const parsed = JSON.parse(raw) as JsonValue;
@@ -180,6 +211,13 @@ export function JsonVisualizer() {
           <div className="source-actions">
             <button
               type="button"
+              className="load-button"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              Load JSON file
+            </button>
+            <button
+              type="button"
               className="format-button"
               onClick={togglePasteFormatting}
               disabled={!pasteVersions}
@@ -189,6 +227,14 @@ export function JsonVisualizer() {
             <span className="privacy-badge">Local only</span>
           </div>
         </div>
+        <input
+          ref={fileInputRef}
+          className="visually-hidden"
+          type="file"
+          accept=".json,application/json"
+          aria-label="JSON file"
+          onChange={handleJsonFileChange}
+        />
         <label className="visually-hidden" htmlFor="json-input">
           Source JSON
         </label>
@@ -209,6 +255,12 @@ export function JsonVisualizer() {
           role="alert"
         >
           {evaluation.jsonError ?? "Valid JSON"}
+        </p>
+        <p
+          className={`field-message file-message ${fileStatus?.isError ? "error-message" : ""}`}
+          aria-live="polite"
+        >
+          {fileStatus?.message ?? ""}
         </p>
       </div>
 

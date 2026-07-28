@@ -27,6 +27,10 @@ describe("JsonVisualizer", () => {
     });
   }
 
+  function jsonFile(name: string, text: () => Promise<string>) {
+    return { name, text } as File;
+  }
+
   it("auto-formats valid pasted JSON and toggles the exact raw text", () => {
     render(<JsonVisualizer />);
     const raw = ' { "a": 1, "nested": [true, null] } ';
@@ -79,6 +83,66 @@ describe("JsonVisualizer", () => {
 
     expect(screen.getByRole("button", { name: "Apply formatting" })).toBeDisabled();
     expect(screen.getByLabelText("Source JSON")).toHaveValue('{\n  "a": 2\n}');
+  });
+
+  it("opens the JSON file picker from the load button", () => {
+    render(<JsonVisualizer />);
+    const fileInput = screen.getByLabelText<HTMLInputElement>("JSON file");
+    const click = vi.spyOn(fileInput, "click");
+
+    fireEvent.click(screen.getByRole("button", { name: "Load JSON file" }));
+
+    expect(click).toHaveBeenCalledOnce();
+    expect(fileInput).toHaveAttribute("accept", ".json,application/json");
+  });
+
+  it("loads a JSON file as the source and evaluates it", async () => {
+    render(<JsonVisualizer />);
+    const raw = '{ "a": 1, "b": 2 }';
+    const file = jsonFile("example.json", vi.fn().mockResolvedValue(raw));
+
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText("JSON file"), { target: { files: [file] } });
+      await Promise.resolve();
+    });
+
+    expect(screen.getByLabelText("Source JSON")).toHaveValue(raw);
+    expect(screen.getByText("Loaded example.json.")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Filter expression"), { target: { value: "a" } });
+    act(() => vi.advanceTimersByTime(250));
+    expect(screen.getByLabelText("Filtered JSON output")).toHaveValue('{\n  "a": 1\n}');
+  });
+
+  it("clears stale paste formatting when a file is loaded", async () => {
+    render(<JsonVisualizer />);
+    paste('{"old":true}');
+    expect(screen.getByRole("button", { name: "Revert formatting" })).toBeEnabled();
+
+    const file = jsonFile("replacement.json", vi.fn().mockResolvedValue('{"new":true}'));
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText("JSON file"), { target: { files: [file] } });
+      await Promise.resolve();
+    });
+
+    expect(screen.getByLabelText("Source JSON")).toHaveValue('{"new":true}');
+    expect(screen.getByRole("button", { name: "Apply formatting" })).toBeDisabled();
+  });
+
+  it("announces file read failures without replacing the source", async () => {
+    render(<JsonVisualizer />);
+    fireEvent.change(screen.getByLabelText("Source JSON"), {
+      target: { value: '{"existing":true}' },
+    });
+    const file = jsonFile("broken.json", vi.fn().mockRejectedValue(new Error("read failed")));
+
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText("JSON file"), { target: { files: [file] } });
+      await Promise.resolve();
+    });
+
+    expect(screen.getByLabelText("Source JSON")).toHaveValue('{"existing":true}');
+    expect(screen.getByText("Could not load broken.json.")).toHaveClass("error-message");
   });
 
   it("uses a one-row textarea and throttles filter height measurements", () => {
