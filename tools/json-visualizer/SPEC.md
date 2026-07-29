@@ -17,6 +17,8 @@ The filter to apply is described as follows:
 - UI.1 When json is pasted on the input, auto-format the json file. Add a button to revert auto-format
 - UI.2 The filter text box should increase vertically in size when the filter no longer fits
 - UI.3 On the input side of the UI, there is a button to load a json file. It takes the file and loads it to the json input
+- UI.4 On the output side of the UI, we have two tabs: One for the filtered json, named "tree", and another tab where we show a table with the results of the first property that is an array on the object, navigating breadth-first. See example 3 below.
+This table contains as headers the subproperties of objects found on the array, and as rows the property values.
 
 ### Examples
 
@@ -102,3 +104,27 @@ the filter "sjaiodf[a],basfsdf" should return
     "basfsdf":"jas sadf s"
 }
 ```
+
+#### Example 3
+with input
+```json
+{
+    "pagedResults":
+    {
+        "results":[{
+            "a":1,"b":2
+        },{
+            "a":1,"b":42
+        }],
+        "totalCount":42,
+        "currentPage":27
+    }
+}
+```
+
+The filter `results[a,b]` shows as a table:
+
+| a | b  |
+|---|----|
+| 1 | 2  |
+| 1 | 24 |

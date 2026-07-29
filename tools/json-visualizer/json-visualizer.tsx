@@ -3,13 +3,16 @@
 import {
   type ClipboardEvent,
   type ChangeEvent,
+  type KeyboardEvent,
   useCallback,
   useEffect,
   useId,
+  useMemo,
   useRef,
   useState,
 } from "react";
 import { filterJson, FilterSyntaxError, parseFilter, type JsonValue } from "./filter";
+import { createTableModel } from "./table-model";
 
 const DEBOUNCE_MS = 250;
 const FILTER_RESIZE_THROTTLE_MS = 250;
@@ -26,9 +29,12 @@ interface FileStatus {
 
 interface Evaluation {
   output: string;
+  filteredValue: JsonValue | null;
   jsonError: string | null;
   filterError: string | null;
 }
+
+type OutputView = "tree" | "table";
 
 function evaluate(jsonText: string, filterText: string): Evaluation {
   let clauses;
@@ -40,29 +46,43 @@ function evaluate(jsonText: string, filterText: string): Evaluation {
     filterError = error instanceof FilterSyntaxError ? error.message : "The filter is invalid.";
   }
 
-  if (!jsonText.trim()) return { output: "", jsonError: null, filterError };
+  if (!jsonText.trim()) {
+    return { output: "", filteredValue: null, jsonError: null, filterError };
+  }
 
   let value: JsonValue;
   try {
     value = JSON.parse(jsonText) as JsonValue;
   } catch (error) {
     const detail = error instanceof Error ? error.message : "The document is not valid JSON.";
-    return { output: "", jsonError: detail, filterError };
+    return { output: "", filteredValue: null, jsonError: detail, filterError };
   }
 
-  if (filterError || !clauses) return { output: "", jsonError: null, filterError };
+  if (filterError || !clauses) {
+    return { output: "", filteredValue: null, jsonError: null, filterError };
+  }
 
   const filtered = filterJson(value, clauses);
-  return { output: JSON.stringify(filtered.value, null, 2), jsonError: null, filterError: null };
+  return {
+    output: JSON.stringify(filtered.value, null, 2),
+    filteredValue: filtered.value,
+    jsonError: null,
+    filterError: null,
+  };
 }
 
 export function JsonVisualizer() {
   const jsonErrorId = useId();
   const filterHelpId = useId();
   const filterErrorId = useId();
+  const treeTabId = useId();
+  const tableTabId = useId();
+  const treePanelId = useId();
+  const tablePanelId = useId();
   const [jsonText, setJsonText] = useState("");
   const [filterText, setFilterText] = useState("");
   const [evaluation, setEvaluation] = useState<Evaluation>(() => evaluate("", ""));
+  const [outputView, setOutputView] = useState<OutputView>("tree");
   const [copyStatus, setCopyStatus] = useState("");
   const [pasteVersions, setPasteVersions] = useState<PasteVersions | null>(null);
   const [showingFormattedPaste, setShowingFormattedPaste] = useState(false);
@@ -70,8 +90,14 @@ export function JsonVisualizer() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const fileLoadIdRef = useRef(0);
   const filterInputRef = useRef<HTMLTextAreaElement>(null);
+  const treeTabRef = useRef<HTMLButtonElement>(null);
+  const tableTabRef = useRef<HTMLButtonElement>(null);
   const lastFilterResizeAtRef = useRef<number | null>(null);
   const filterResizeTimeoutRef = useRef<number | null>(null);
+  const tableModel = useMemo(
+    () => createTableModel(evaluation.filteredValue),
+    [evaluation.filteredValue],
+  );
 
   const resizeFilterInput = useCallback(() => {
     const input = filterInputRef.current;
@@ -136,6 +162,29 @@ export function JsonVisualizer() {
     } catch {
       setCopyStatus("Could not copy. Select the output and copy it manually.");
     }
+  }
+
+  function selectOutputView(view: OutputView, moveFocus = false) {
+    setOutputView(view);
+    if (moveFocus) {
+      (view === "tree" ? treeTabRef : tableTabRef).current?.focus();
+    }
+  }
+
+  function handleOutputTabKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
+    let nextView: OutputView | null = null;
+
+    if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+      nextView = outputView === "tree" ? "table" : "tree";
+    } else if (event.key === "Home") {
+      nextView = "tree";
+    } else if (event.key === "End") {
+      nextView = "table";
+    }
+
+    if (!nextView) return;
+    event.preventDefault();
+    selectOutputView(nextView, true);
   }
 
   function handleJsonChange(value: string) {
@@ -314,17 +363,91 @@ export function JsonVisualizer() {
             Copy JSON
           </button>
         </div>
-        <label className="visually-hidden" htmlFor="json-output">
-          Filtered JSON output
-        </label>
-        <textarea
-          id="json-output"
-          className="code-area output-area"
-          value={evaluation.output}
-          placeholder="Filtered JSON appears here"
-          readOnly
-          spellCheck={false}
-        />
+        <div className="output-tabs" role="tablist" aria-label="Filtered output views">
+          <button
+            ref={treeTabRef}
+            id={treeTabId}
+            type="button"
+            className="output-tab"
+            role="tab"
+            aria-selected={outputView === "tree"}
+            aria-controls={treePanelId}
+            tabIndex={outputView === "tree" ? 0 : -1}
+            onClick={() => selectOutputView("tree")}
+            onKeyDown={handleOutputTabKeyDown}
+          >
+            Tree
+          </button>
+          <button
+            ref={tableTabRef}
+            id={tableTabId}
+            type="button"
+            className="output-tab"
+            role="tab"
+            aria-selected={outputView === "table"}
+            aria-controls={tablePanelId}
+            tabIndex={outputView === "table" ? 0 : -1}
+            onClick={() => selectOutputView("table")}
+            onKeyDown={handleOutputTabKeyDown}
+          >
+            Table
+          </button>
+        </div>
+        <div
+          id={treePanelId}
+          className="output-panel tree-panel"
+          role="tabpanel"
+          aria-labelledby={treeTabId}
+          hidden={outputView !== "tree"}
+        >
+          <label className="visually-hidden" htmlFor="json-output">
+            Filtered JSON output
+          </label>
+          <textarea
+            id="json-output"
+            className="code-area output-area"
+            value={evaluation.output}
+            placeholder="Filtered JSON appears here"
+            readOnly
+            spellCheck={false}
+          />
+        </div>
+        <div
+          id={tablePanelId}
+          className="output-panel table-panel"
+          role="tabpanel"
+          aria-labelledby={tableTabId}
+          hidden={outputView !== "table"}
+        >
+          {!tableModel ? (
+            <p className="table-empty">No object array is available in the filtered output.</p>
+          ) : tableModel.columns.length === 0 ? (
+            <p className="table-empty">The first object array has no properties to display.</p>
+          ) : (
+            <div className="table-scroll">
+              <table className="result-table">
+                <thead>
+                  <tr>
+                    {tableModel.columns.map((column) => (
+                      <th key={column} scope="col">
+                        {column}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {tableModel.rows.map((row, rowIndex) => (
+                    <tr key={rowIndex}>
+                      {row.map((cell, columnIndex) => (
+                        <td key={tableModel.columns[columnIndex]}>{cell}</td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
         <p className="copy-status" aria-live="polite">
           {copyStatus}
         </p>

@@ -224,6 +224,94 @@ describe("JsonVisualizer", () => {
     expect(screen.getByLabelText("Filtered JSON output")).toHaveAttribute("readonly");
   });
 
+  it("shows Tree by default and exposes accessible output tabs", () => {
+    render(<JsonVisualizer />);
+
+    const treeTab = screen.getByRole("tab", { name: "Tree" });
+    const tableTab = screen.getByRole("tab", { name: "Table" });
+
+    expect(treeTab).toHaveAttribute("aria-selected", "true");
+    expect(treeTab).toHaveAttribute("tabindex", "0");
+    expect(tableTab).toHaveAttribute("aria-selected", "false");
+    expect(tableTab).toHaveAttribute("tabindex", "-1");
+    expect(screen.getByRole("tabpanel", { name: "Tree" })).toBeVisible();
+    expect(screen.queryByRole("tabpanel", { name: "Table" })).not.toBeInTheDocument();
+  });
+
+  it("renders specification example 3 as a table", () => {
+    render(<JsonVisualizer />);
+    update(
+      JSON.stringify({
+        pagedResults: {
+          results: [
+            { a: 1, b: 2 },
+            { a: 1, b: 42 },
+          ],
+          totalCount: 42,
+          currentPage: 27,
+        },
+      }),
+      "results[a,b]",
+    );
+    act(() => vi.advanceTimersByTime(250));
+
+    fireEvent.click(screen.getByRole("tab", { name: "Table" }));
+
+    expect(screen.getByRole("tab", { name: "Table" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(screen.getAllByRole("columnheader").map((header) => header.textContent)).toEqual([
+      "a",
+      "b",
+    ]);
+    expect(
+      screen.getAllByRole("row").map((row) =>
+        Array.from(row.querySelectorAll("th, td"), (cell) => cell.textContent),
+      ),
+    ).toEqual([
+      ["a", "b"],
+      ["1", "2"],
+      ["1", "42"],
+    ]);
+  });
+
+  it("supports keyboard tab navigation and retains the selected view after evaluation", () => {
+    render(<JsonVisualizer />);
+    const treeTab = screen.getByRole("tab", { name: "Tree" });
+
+    fireEvent.keyDown(treeTab, { key: "ArrowRight" });
+    expect(screen.getByRole("tab", { name: "Table" })).toHaveFocus();
+    expect(screen.getByRole("tab", { name: "Table" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+
+    update('{"records":[{"id":1}]}', "records[id]");
+    act(() => vi.advanceTimersByTime(250));
+    expect(screen.getByRole("tabpanel", { name: "Table" })).toBeVisible();
+
+    fireEvent.keyDown(screen.getByRole("tab", { name: "Table" }), { key: "Home" });
+    expect(treeTab).toHaveFocus();
+    expect(treeTab).toHaveAttribute("aria-selected", "true");
+  });
+
+  it.each([
+    ["a primitive-only result", '{"values":[1,2,3]}'],
+    ["a root array", '[{"id":1}]'],
+    ["a scalar root", '"text"'],
+  ])("shows the table empty state for %s", (_description, json) => {
+    render(<JsonVisualizer />);
+    update(json, "");
+    act(() => vi.advanceTimersByTime(250));
+
+    fireEvent.click(screen.getByRole("tab", { name: "Table" }));
+
+    expect(
+      screen.getByText("No object array is available in the filtered output."),
+    ).toBeVisible();
+  });
+
   it("pretty-prints all valid JSON when the filter is blank", () => {
     render(<JsonVisualizer />);
     update('{"a":1}', "");
