@@ -428,8 +428,8 @@ export function JsonVisualizer() {
               <table className="result-table">
                 <thead>
                   <tr>
-                    {tableModel.columns.map((column) => (
-                      <th key={column} scope="col">
+                    {tableModel.columns.map((column, columnIndex) => (
+                      <th key={`${columnIndex}:${column}`} scope="col">
                         {column}
                       </th>
                     ))}
@@ -439,7 +439,7 @@ export function JsonVisualizer() {
                   {tableModel.rows.map((row, rowIndex) => (
                     <tr key={rowIndex}>
                       {row.map((cell, columnIndex) => (
-                        <td key={tableModel.columns[columnIndex]}>{cell}</td>
+                        <td key={`${columnIndex}:${tableModel.columns[columnIndex]}`}>{cell}</td>
                       ))}
                     </tr>
                   ))}

@@ -276,6 +276,48 @@ describe("JsonVisualizer", () => {
     ]);
   });
 
+  it("renders specification example 4 with flattened object columns", () => {
+    render(<JsonVisualizer />);
+    update(
+      JSON.stringify({
+        pagedResults: {
+          results: [
+            {
+              id: 2081,
+              multiLanguageContent: { title: "abcd" },
+              owner: { id: 4988, userName: "190172" },
+            },
+            {
+              id: 791,
+              multiLanguageContent: { title: "efg" },
+              owner: { id: 1040, userName: "204253" },
+            },
+          ],
+        },
+      }),
+      "",
+    );
+    act(() => vi.advanceTimersByTime(250));
+
+    fireEvent.click(screen.getByRole("tab", { name: "Table" }));
+
+    expect(screen.getAllByRole("columnheader").map((header) => header.textContent)).toEqual([
+      "id",
+      "multiLanguageContent.title",
+      "owner.id",
+      "owner.userName",
+    ]);
+    expect(
+      screen.getAllByRole("row").map((row) =>
+        Array.from(row.querySelectorAll("th, td"), (cell) => cell.textContent),
+      ),
+    ).toEqual([
+      ["id", "multiLanguageContent.title", "owner.id", "owner.userName"],
+      ["2081", "abcd", "4988", "190172"],
+      ["791", "efg", "1040", "204253"],
+    ]);
+  });
+
   it("supports keyboard tab navigation and retains the selected view after evaluation", () => {
     render(<JsonVisualizer />);
     const treeTab = screen.getByRole("tab", { name: "Tree" });

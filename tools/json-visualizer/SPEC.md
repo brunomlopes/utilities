@@ -19,6 +19,7 @@ The filter to apply is described as follows:
 - UI.3 On the input side of the UI, there is a button to load a json file. It takes the file and loads it to the json input
 - UI.4 On the output side of the UI, we have two tabs: One for the filtered json, named "tree", and another tab where we show a table with the results of the first property that is an array on the object, navigating breadth-first. See example 3 below.
 This table contains as headers the subproperties of objects found on the array, and as rows the property values.
+- UI.5 When rendering a table, flatten an object if the subproperties are all primitives. See example 4 below
 
 ### Examples
 
@@ -128,3 +129,43 @@ The filter `results[a,b]` shows as a table:
 |---|----|
 | 1 | 2  |
 | 1 | 24 |
+
+#### Example 4
+
+If the resulting json is:
+
+```json
+{
+  "pagedResults": {
+    "results": [
+      {
+        "id": 2081,
+        "multiLanguageContent": {
+          "title": "abcd"
+        },
+        "owner": {
+          "id": 4988,
+          "userName": "190172"
+        }
+      },
+      {
+        "id": 791,
+        "multiLanguageContent": {
+          "title": "efg"
+        },
+        "owner": {
+          "id": 1040,
+          "userName": "204253"
+        }
+      }
+   ]
+  }
+}
+```
+
+A table format would be 
+
+| id | multilanguageContent.title  | owner.id | owner.userName |
+|---|----|---|----|
+| 2080 | abcd  | 4988 | 190172  |
+| 791 | efg  | 1040 | 204253  |

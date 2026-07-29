@@ -7,8 +7,24 @@ export interface TableModel {
   rows: string[][];
 }
 
+interface TableColumn {
+  label: string;
+  parent: string;
+  child?: string;
+}
+
 function isJsonObject(value: JsonValue): value is JsonObject {
   return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function isJsonPrimitive(value: JsonValue): boolean {
+  return value === null || typeof value !== "object";
+}
+
+function isFlattenableObject(value: JsonValue): value is JsonObject {
+  if (!isJsonObject(value)) return false;
+  const children = Object.values(value);
+  return children.length > 0 && children.every(isJsonPrimitive);
 }
 
 function formatCell(value: JsonValue): string {
@@ -28,6 +44,64 @@ function enqueueDescendantObjects(value: JsonValue, queue: JsonObject[]): void {
   }
 }
 
+function hasOwn(object: JsonObject, key: string): boolean {
+  return Object.prototype.hasOwnProperty.call(object, key);
+}
+
+function createColumns(rows: JsonObject[]): TableColumn[] {
+  const parentKeys: string[] = [];
+  const seenParentKeys = new Set<string>();
+
+  for (const row of rows) {
+    for (const key of Object.keys(row)) {
+      if (seenParentKeys.has(key)) continue;
+      seenParentKeys.add(key);
+      parentKeys.push(key);
+    }
+  }
+
+  return parentKeys.flatMap((parent): TableColumn[] => {
+    const nonNullValues = rows.flatMap((row) =>
+      hasOwn(row, parent) && row[parent] !== null ? [row[parent]] : [],
+    );
+
+    if (
+      nonNullValues.length === 0 ||
+      !nonNullValues.every((value) => isFlattenableObject(value))
+    ) {
+      return [{ label: parent, parent }];
+    }
+
+    const childKeys: string[] = [];
+    const seenChildKeys = new Set<string>();
+
+    for (const value of nonNullValues) {
+      if (!isFlattenableObject(value)) continue;
+      for (const child of Object.keys(value)) {
+        if (seenChildKeys.has(child)) continue;
+        seenChildKeys.add(child);
+        childKeys.push(child);
+      }
+    }
+
+    return childKeys.map((child) => ({
+      label: `${parent}.${child}`,
+      parent,
+      child,
+    }));
+  });
+}
+
+function readCell(row: JsonObject, column: TableColumn): string {
+  if (!hasOwn(row, column.parent)) return "";
+
+  const parentValue = row[column.parent];
+  if (column.child === undefined) return formatCell(parentValue);
+  if (!isJsonObject(parentValue) || !hasOwn(parentValue, column.child)) return "";
+
+  return formatCell(parentValue[column.child]);
+}
+
 export function createTableModel(value: JsonValue | null): TableModel | null {
   if (!isJsonObject(value)) return null;
 
@@ -42,24 +116,11 @@ export function createTableModel(value: JsonValue | null): TableModel | null {
       const objectRows = child.filter(isJsonObject);
       if (objectRows.length === 0) continue;
 
-      const columns: string[] = [];
-      const seenColumns = new Set<string>();
-
-      for (const row of objectRows) {
-        for (const key of Object.keys(row)) {
-          if (seenColumns.has(key)) continue;
-          seenColumns.add(key);
-          columns.push(key);
-        }
-      }
+      const columns = createColumns(objectRows);
 
       return {
-        columns,
-        rows: objectRows.map((row) =>
-          columns.map((column) =>
-            Object.prototype.hasOwnProperty.call(row, column) ? formatCell(row[column]) : "",
-          ),
-        ),
+        columns: columns.map((column) => column.label),
+        rows: objectRows.map((row) => columns.map((column) => readCell(row, column))),
       };
     }
 
