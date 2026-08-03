@@ -318,6 +318,43 @@ describe("JsonVisualizer", () => {
     ]);
   });
 
+  it("renders specification example 5 by drilling through a singleton array", () => {
+    render(<JsonVisualizer />);
+    update(
+      JSON.stringify({
+        items: {
+          "34": [
+            {
+              key: "idsrv",
+              value: [
+                { type: "nbf", value: "1785405758" },
+                { type: "exp", value: "1785406058" },
+              ],
+            },
+          ],
+        },
+      }),
+      "",
+    );
+    act(() => vi.advanceTimersByTime(250));
+
+    fireEvent.click(screen.getByRole("tab", { name: "Table" }));
+
+    expect(screen.getAllByRole("columnheader").map((header) => header.textContent)).toEqual([
+      "type",
+      "value",
+    ]);
+    expect(
+      screen.getAllByRole("row").map((row) =>
+        Array.from(row.querySelectorAll("th, td"), (cell) => cell.textContent),
+      ),
+    ).toEqual([
+      ["type", "value"],
+      ["nbf", "1785405758"],
+      ["exp", "1785406058"],
+    ]);
+  });
+
   it("supports keyboard tab navigation and retains the selected view after evaluation", () => {
     render(<JsonVisualizer />);
     const treeTab = screen.getByRole("tab", { name: "Tree" });

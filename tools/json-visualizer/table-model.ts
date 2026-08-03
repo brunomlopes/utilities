@@ -13,6 +13,11 @@ interface TableColumn {
   child?: string;
 }
 
+interface ObjectArrayCandidate {
+  items: JsonValue[];
+  rows: JsonObject[];
+}
+
 function isJsonObject(value: JsonValue): value is JsonObject {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
@@ -42,6 +47,39 @@ function enqueueDescendantObjects(value: JsonValue, queue: JsonObject[]): void {
   if (Array.isArray(value)) {
     for (const item of value) enqueueDescendantObjects(item, queue);
   }
+}
+
+function findFirstObjectArray(value: JsonObject): ObjectArrayCandidate | null {
+  const queue: JsonObject[] = [value];
+
+  for (let index = 0; index < queue.length; index += 1) {
+    const current = queue[index];
+
+    for (const child of Object.values(current)) {
+      if (!Array.isArray(child)) continue;
+
+      const rows = child.filter(isJsonObject);
+      if (rows.length > 0) return { items: child, rows };
+    }
+
+    for (const child of Object.values(current)) {
+      enqueueDescendantObjects(child, queue);
+    }
+  }
+
+  return null;
+}
+
+function findPreferredObjectArray(value: JsonObject): JsonObject[] | null {
+  let candidate = findFirstObjectArray(value);
+
+  while (candidate?.items.length === 1) {
+    const nestedCandidate = findFirstObjectArray(candidate.rows[0]);
+    if (!nestedCandidate) break;
+    candidate = nestedCandidate;
+  }
+
+  return candidate?.rows ?? null;
 }
 
 function hasOwn(object: JsonObject, key: string): boolean {
@@ -105,29 +143,13 @@ function readCell(row: JsonObject, column: TableColumn): string {
 export function createTableModel(value: JsonValue | null): TableModel | null {
   if (!isJsonObject(value)) return null;
 
-  const queue: JsonObject[] = [value];
+  const objectRows = findPreferredObjectArray(value);
+  if (!objectRows) return null;
 
-  for (let index = 0; index < queue.length; index += 1) {
-    const current = queue[index];
+  const columns = createColumns(objectRows);
 
-    for (const child of Object.values(current)) {
-      if (!Array.isArray(child)) continue;
-
-      const objectRows = child.filter(isJsonObject);
-      if (objectRows.length === 0) continue;
-
-      const columns = createColumns(objectRows);
-
-      return {
-        columns: columns.map((column) => column.label),
-        rows: objectRows.map((row) => columns.map((column) => readCell(row, column))),
-      };
-    }
-
-    for (const child of Object.values(current)) {
-      enqueueDescendantObjects(child, queue);
-    }
-  }
-
-  return null;
+  return {
+    columns: columns.map((column) => column.label),
+    rows: objectRows.map((row) => columns.map((column) => readCell(row, column))),
+  };
 }

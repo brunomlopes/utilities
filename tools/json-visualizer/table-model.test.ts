@@ -95,6 +95,64 @@ describe("createTableModel", () => {
     });
   });
 
+  it("implements specification example 5 by drilling through a singleton array", () => {
+    const value: JsonValue = {
+      items: {
+        "34": [
+          {
+            key: "idsrv",
+            value: [
+              { type: "nbf", value: "1785405758" },
+              { type: "exp", value: "1785406058" },
+            ],
+          },
+        ],
+      },
+    };
+
+    expect(createTableModel(value)).toEqual({
+      columns: ["type", "value"],
+      rows: [
+        ["nbf", "1785405758"],
+        ["exp", "1785406058"],
+      ],
+    });
+  });
+
+  it("recursively drills through consecutive singleton object arrays", () => {
+    const value: JsonValue = {
+      outer: [{ middle: [{ inner: [{ id: 1 }, { id: 2 }] }] }],
+    };
+
+    expect(createTableModel(value)).toEqual({
+      columns: ["id"],
+      rows: [["1"], ["2"]],
+    });
+  });
+
+  it("renders the deepest terminal singleton when no deeper array exists", () => {
+    const value: JsonValue = {
+      outer: [{ inner: [{ id: 7, name: "terminal" }] }],
+    };
+
+    expect(createTableModel(value)).toEqual({
+      columns: ["id", "name"],
+      rows: [["7", "terminal"]],
+    });
+  });
+
+  it("keeps singleton drill-down inside the initially selected branch", () => {
+    const value: JsonValue = {
+      selected: [{ nested: [{ id: "selected" }] }],
+      laterSibling: [{ id: "ignored-1" }, { id: "ignored-2" }],
+    };
+
+    expect(createTableModel(value)).toEqual({
+      columns: ["id"],
+      rows: [["selected"]],
+    });
+  });
+
   it("unions flattened child keys and leaves missing or null parents blank", () => {
     const value: JsonValue = {
       records: [

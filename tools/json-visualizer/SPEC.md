@@ -20,6 +20,7 @@ The filter to apply is described as follows:
 - UI.4 On the output side of the UI, we have two tabs: One for the filtered json, named "tree", and another tab where we show a table with the results of the first property that is an array on the object, navigating breadth-first. See example 3 below.
 This table contains as headers the subproperties of objects found on the array, and as rows the property values.
 - UI.5 When rendering a table, flatten an object if the subproperties are all primitives. See example 4 below
+- UI.6 When rendering a table, if an array only has one item, search the sub-items, breadth first, until you find an array with more than one item. Apply this recursively until finding either one array with more than one item, or it's the last array. See example 5 below
 
 ### Examples
 
@@ -169,3 +170,37 @@ A table format would be
 |---|----|---|----|
 | 2080 | abcd  | 4988 | 190172  |
 | 791 | efg  | 1040 | 204253  |
+
+
+#### Example 5
+
+If the resulting json is:
+
+```json
+{
+  "items": {
+    "34": [
+      {
+        "key": "idsrv",
+        "value": [
+          {
+            "type": "nbf",
+            "value": "1785405758",
+          },
+          {
+            "type": "exp",
+            "value": "1785406058",
+          }
+      }
+    ]
+  }
+}
+
+```
+
+A table format would be 
+
+| type | value |
+|------|-------|
+| nbf | 1785405758  |
+| exp | 1785406058  |
