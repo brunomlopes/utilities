@@ -11,6 +11,7 @@ The filter to apply is described as follows:
 - "x[a,b,c]" shows all object, where there is at least one sub-property x with one of these names
 - when x is an array, "x[a],b" should apply the "a" filter to all items on the array x. 
 - * can be used to wildcard properties. "zxc*" should match "zxc","zxcvd","zxckmam"
+- x[a=42] can be used to only show items where `a=42`
 
 ### UI behaviour
 
@@ -21,6 +22,7 @@ The filter to apply is described as follows:
 This table contains as headers the subproperties of objects found on the array, and as rows the property values.
 - UI.5 When rendering a table, flatten an object if the subproperties are all primitives. See example 4 below
 - UI.6 When rendering a table, if an array only has one item, search the sub-items, breadth first, until you find an array with more than one item. Apply this recursively until finding either one array with more than one item, or it's the last array. See example 5 below
+- UI.7 The table allows sorting values by column. Clicking on each column toggles between original-order,ascending,descending. When toggling the order of a column, there is an indicator if it's ascending or descending. Order is case-insensitive.
 
 ### Examples
 

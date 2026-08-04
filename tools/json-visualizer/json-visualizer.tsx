@@ -13,6 +13,7 @@ import {
 } from "react";
 import { filterJson, FilterSyntaxError, parseFilter, type JsonValue } from "./filter";
 import { createTableModel } from "./table-model";
+import { getSortedRowIndices, type SortDirection } from "./table-sort";
 
 const DEBOUNCE_MS = 250;
 const FILTER_RESIZE_THROTTLE_MS = 250;
@@ -35,6 +36,11 @@ interface Evaluation {
 }
 
 type OutputView = "tree" | "table";
+
+interface SortState {
+  columnKey: string;
+  direction: SortDirection;
+}
 
 function evaluate(jsonText: string, filterText: string): Evaluation {
   let clauses;
@@ -83,6 +89,7 @@ export function JsonVisualizer() {
   const [filterText, setFilterText] = useState("");
   const [evaluation, setEvaluation] = useState<Evaluation>(() => evaluate("", ""));
   const [outputView, setOutputView] = useState<OutputView>("tree");
+  const [sortState, setSortState] = useState<SortState | null>(null);
   const [copyStatus, setCopyStatus] = useState("");
   const [pasteVersions, setPasteVersions] = useState<PasteVersions | null>(null);
   const [showingFormattedPaste, setShowingFormattedPaste] = useState(false);
@@ -98,6 +105,14 @@ export function JsonVisualizer() {
     () => createTableModel(evaluation.filteredValue),
     [evaluation.filteredValue],
   );
+  const activeSort =
+    sortState && tableModel?.columnKeys.includes(sortState.columnKey) ? sortState : null;
+  const sortedRowIndices = useMemo(() => {
+    if (!tableModel) return [];
+    if (!activeSort) return tableModel.rows.map((_, index) => index);
+
+    return getSortedRowIndices(tableModel, activeSort.columnKey, activeSort.direction);
+  }, [activeSort, tableModel]);
 
   const resizeFilterInput = useCallback(() => {
     const input = filterInputRef.current;
@@ -136,7 +151,13 @@ export function JsonVisualizer() {
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
-      setEvaluation(evaluate(jsonText, filterText));
+      const nextEvaluation = evaluate(jsonText, filterText);
+      const nextTableModel = createTableModel(nextEvaluation.filteredValue);
+
+      setEvaluation(nextEvaluation);
+      setSortState((current) =>
+        current && !nextTableModel?.columnKeys.includes(current.columnKey) ? null : current,
+      );
       setCopyStatus("");
     }, DEBOUNCE_MS);
 
@@ -185,6 +206,20 @@ export function JsonVisualizer() {
     if (!nextView) return;
     event.preventDefault();
     selectOutputView(nextView, true);
+  }
+
+  function toggleColumnSort(columnKey: string) {
+    setSortState((current) => {
+      if (!current || current.columnKey !== columnKey) {
+        return { columnKey, direction: "ascending" };
+      }
+
+      if (current.direction === "ascending") {
+        return { columnKey, direction: "descending" };
+      }
+
+      return null;
+    });
   }
 
   function handleJsonChange(value: string) {
@@ -428,17 +463,38 @@ export function JsonVisualizer() {
               <table className="result-table">
                 <thead>
                   <tr>
-                    {tableModel.columns.map((column, columnIndex) => (
-                      <th key={`${columnIndex}:${column}`} scope="col">
-                        {column}
-                      </th>
-                    ))}
+                    {tableModel.columns.map((column, columnIndex) => {
+                      const columnKey = tableModel.columnKeys[columnIndex];
+                      const direction =
+                        activeSort?.columnKey === columnKey ? activeSort.direction : null;
+
+                      return (
+                        <th
+                          key={`${columnIndex}:${columnKey}`}
+                          scope="col"
+                          aria-sort={direction ?? "none"}
+                        >
+                          <button
+                            type="button"
+                            className="sort-button"
+                            onClick={() => toggleColumnSort(columnKey)}
+                          >
+                            <span>{column}</span>
+                            {direction ? (
+                              <span className="sort-indicator" aria-hidden="true">
+                                {direction === "ascending" ? "↑" : "↓"}
+                              </span>
+                            ) : null}
+                          </button>
+                        </th>
+                      );
+                    })}
                   </tr>
                 </thead>
                 <tbody>
-                  {tableModel.rows.map((row, rowIndex) => (
+                  {sortedRowIndices.map((rowIndex) => (
                     <tr key={rowIndex}>
-                      {row.map((cell, columnIndex) => (
+                      {tableModel.rows[rowIndex].map((cell, columnIndex) => (
                         <td key={`${columnIndex}:${tableModel.columns[columnIndex]}`}>{cell}</td>
                       ))}
                     </tr>

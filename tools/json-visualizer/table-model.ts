@@ -4,7 +4,9 @@ type JsonObject = { [key: string]: JsonValue };
 
 export interface TableModel {
   columns: string[];
+  columnKeys: string[];
   rows: string[][];
+  sortValues: (JsonValue | undefined)[][];
 }
 
 interface TableColumn {
@@ -131,13 +133,22 @@ function createColumns(rows: JsonObject[]): TableColumn[] {
 }
 
 function readCell(row: JsonObject, column: TableColumn): string {
-  if (!hasOwn(row, column.parent)) return "";
+  const value = readCellValue(row, column);
+  return value === undefined ? "" : formatCell(value);
+}
+
+function readCellValue(row: JsonObject, column: TableColumn): JsonValue | undefined {
+  if (!hasOwn(row, column.parent)) return undefined;
 
   const parentValue = row[column.parent];
-  if (column.child === undefined) return formatCell(parentValue);
-  if (!isJsonObject(parentValue) || !hasOwn(parentValue, column.child)) return "";
+  if (column.child === undefined) return parentValue;
+  if (!isJsonObject(parentValue) || !hasOwn(parentValue, column.child)) return undefined;
 
-  return formatCell(parentValue[column.child]);
+  return parentValue[column.child];
+}
+
+function createColumnKey(column: TableColumn): string {
+  return JSON.stringify([column.parent, column.child ?? null]);
 }
 
 export function createTableModel(value: JsonValue | null): TableModel | null {
@@ -150,6 +161,10 @@ export function createTableModel(value: JsonValue | null): TableModel | null {
 
   return {
     columns: columns.map((column) => column.label),
+    columnKeys: columns.map(createColumnKey),
     rows: objectRows.map((row) => columns.map((column) => readCell(row, column))),
+    sortValues: objectRows.map((row) =>
+      columns.map((column) => readCellValue(row, column)),
+    ),
   };
 }

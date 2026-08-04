@@ -276,6 +276,118 @@ describe("JsonVisualizer", () => {
     ]);
   });
 
+  it("cycles a column through ascending, descending, and original order", () => {
+    render(<JsonVisualizer />);
+    update(
+      JSON.stringify({ records: [{ score: 10 }, { score: 2 }, { score: 7 }] }),
+      "",
+    );
+    act(() => vi.advanceTimersByTime(250));
+    fireEvent.click(screen.getByRole("tab", { name: "Table" }));
+
+    const sortButton = screen.getByRole("button", { name: "score" });
+    const header = screen.getByRole("columnheader", { name: "score" });
+    const values = () =>
+      screen
+        .getAllByRole("row")
+        .slice(1)
+        .map((row) => row.querySelector("td")?.textContent);
+
+    expect(sortButton.tagName).toBe("BUTTON");
+    expect(header).toHaveAttribute("aria-sort", "none");
+    expect(values()).toEqual(["10", "2", "7"]);
+
+    sortButton.focus();
+    fireEvent.click(sortButton);
+    expect(sortButton).toHaveFocus();
+    expect(header).toHaveAttribute("aria-sort", "ascending");
+    expect(header).toHaveTextContent("↑");
+    expect(values()).toEqual(["2", "7", "10"]);
+
+    fireEvent.click(sortButton);
+    expect(header).toHaveAttribute("aria-sort", "descending");
+    expect(header).toHaveTextContent("↓");
+    expect(values()).toEqual(["10", "7", "2"]);
+
+    fireEvent.click(sortButton);
+    expect(header).toHaveAttribute("aria-sort", "none");
+    expect(header).not.toHaveTextContent("↑");
+    expect(header).not.toHaveTextContent("↓");
+    expect(values()).toEqual(["10", "2", "7"]);
+  });
+
+  it("keeps only one sorted column active", () => {
+    render(<JsonVisualizer />);
+    update(
+      JSON.stringify({
+        records: [
+          { name: "Beta", score: 1 },
+          { name: "alpha", score: 2 },
+        ],
+      }),
+      "",
+    );
+    act(() => vi.advanceTimersByTime(250));
+    fireEvent.click(screen.getByRole("tab", { name: "Table" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "name" }));
+    expect(screen.getByRole("columnheader", { name: "name" })).toHaveAttribute(
+      "aria-sort",
+      "ascending",
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "score" }));
+    expect(screen.getByRole("columnheader", { name: "name" })).toHaveAttribute(
+      "aria-sort",
+      "none",
+    );
+    expect(screen.getByRole("columnheader", { name: "score" })).toHaveAttribute(
+      "aria-sort",
+      "ascending",
+    );
+  });
+
+  it("preserves a sort across evaluation while its column exists and resets it otherwise", () => {
+    render(<JsonVisualizer />);
+    update(JSON.stringify({ records: [{ name: "Beta" }, { name: "alpha" }] }), "");
+    act(() => vi.advanceTimersByTime(250));
+    fireEvent.click(screen.getByRole("tab", { name: "Table" }));
+    fireEvent.click(screen.getByRole("button", { name: "name" }));
+
+    update(JSON.stringify({ records: [{ name: "delta" }, { name: "Charlie" }] }), "");
+    act(() => vi.advanceTimersByTime(250));
+    expect(screen.getByRole("columnheader", { name: "name" })).toHaveAttribute(
+      "aria-sort",
+      "ascending",
+    );
+    expect(
+      screen
+        .getAllByRole("row")
+        .slice(1)
+        .map((row) => row.querySelector("td")?.textContent),
+    ).toEqual(["Charlie", "delta"]);
+
+    update(JSON.stringify({ records: [{ id: 2 }, { id: 1 }] }), "");
+    act(() => vi.advanceTimersByTime(250));
+    expect(screen.getByRole("columnheader", { name: "id" })).toHaveAttribute(
+      "aria-sort",
+      "none",
+    );
+
+    update(JSON.stringify({ records: [{ name: "Zulu" }, { name: "Echo" }] }), "");
+    act(() => vi.advanceTimersByTime(250));
+    expect(screen.getByRole("columnheader", { name: "name" })).toHaveAttribute(
+      "aria-sort",
+      "none",
+    );
+    expect(
+      screen
+        .getAllByRole("row")
+        .slice(1)
+        .map((row) => row.querySelector("td")?.textContent),
+    ).toEqual(["Zulu", "Echo"]);
+  });
+
   it("renders specification example 4 with flattened object columns", () => {
     render(<JsonVisualizer />);
     update(

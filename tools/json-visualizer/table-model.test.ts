@@ -2,6 +2,13 @@ import { describe, expect, it } from "vitest";
 import type { JsonValue } from "./filter";
 import { createTableModel } from "./table-model";
 
+function createDisplayTable(value: JsonValue) {
+  const model = createTableModel(value);
+  if (!model) return null;
+
+  return { columns: model.columns, rows: model.rows };
+}
+
 describe("createTableModel", () => {
   it("builds the table from specification example 3", () => {
     const value: JsonValue = {
@@ -15,7 +22,7 @@ describe("createTableModel", () => {
       },
     };
 
-    expect(createTableModel(value)).toEqual({
+    expect(createDisplayTable(value)).toEqual({
       columns: ["a", "b"],
       rows: [
         ["1", "2"],
@@ -32,7 +39,7 @@ describe("createTableModel", () => {
       secondAtSameDepth: [{ ignored: 2 }],
     };
 
-    expect(createTableModel(value)).toEqual({
+    expect(createDisplayTable(value)).toEqual({
       columns: ["selected"],
       rows: [["1"]],
     });
@@ -44,7 +51,7 @@ describe("createTableModel", () => {
       nested: { records: [{ id: 7 }] },
     };
 
-    expect(createTableModel(value)).toEqual({
+    expect(createDisplayTable(value)).toEqual({
       columns: ["id"],
       rows: [["7"]],
     });
@@ -59,7 +66,7 @@ describe("createTableModel", () => {
       ],
     };
 
-    expect(createTableModel(value)).toEqual({
+    expect(createDisplayTable(value)).toEqual({
       columns: ["name", "active", "details.role", "count", "tags", "empty"],
       rows: [
         ["Ada", "true", "admin", "", "", ""],
@@ -86,7 +93,7 @@ describe("createTableModel", () => {
       },
     };
 
-    expect(createTableModel(value)).toEqual({
+    expect(createDisplayTable(value)).toEqual({
       columns: ["id", "multiLanguageContent.title", "owner.id", "owner.userName"],
       rows: [
         ["2081", "abcd", "4988", "190172"],
@@ -110,7 +117,7 @@ describe("createTableModel", () => {
       },
     };
 
-    expect(createTableModel(value)).toEqual({
+    expect(createDisplayTable(value)).toEqual({
       columns: ["type", "value"],
       rows: [
         ["nbf", "1785405758"],
@@ -124,7 +131,7 @@ describe("createTableModel", () => {
       outer: [{ middle: [{ inner: [{ id: 1 }, { id: 2 }] }] }],
     };
 
-    expect(createTableModel(value)).toEqual({
+    expect(createDisplayTable(value)).toEqual({
       columns: ["id"],
       rows: [["1"], ["2"]],
     });
@@ -135,7 +142,7 @@ describe("createTableModel", () => {
       outer: [{ inner: [{ id: 7, name: "terminal" }] }],
     };
 
-    expect(createTableModel(value)).toEqual({
+    expect(createDisplayTable(value)).toEqual({
       columns: ["id", "name"],
       rows: [["7", "terminal"]],
     });
@@ -147,7 +154,7 @@ describe("createTableModel", () => {
       laterSibling: [{ id: "ignored-1" }, { id: "ignored-2" }],
     };
 
-    expect(createTableModel(value)).toEqual({
+    expect(createDisplayTable(value)).toEqual({
       columns: ["id"],
       rows: [["selected"]],
     });
@@ -163,7 +170,7 @@ describe("createTableModel", () => {
       ],
     };
 
-    expect(createTableModel(value)).toEqual({
+    expect(createDisplayTable(value)).toEqual({
       columns: ["id", "owner.id", "owner.userName", "metadata.reviewed"],
       rows: [
         ["1", "10", "Ada", "null"],
@@ -192,7 +199,7 @@ describe("createTableModel", () => {
       ],
     };
 
-    expect(createTableModel(value)).toEqual({
+    expect(createDisplayTable(value)).toEqual({
       columns: ["nested", "empty", "list", "inconsistent"],
       rows: [
         ['{"profile":{"name":"Ada"}}', "{}", "[1,2]", '{"id":1}'],
@@ -206,7 +213,7 @@ describe("createTableModel", () => {
       records: [{ owner: { id: 1 }, "owner.id": "literal" }],
     };
 
-    expect(createTableModel(value)).toEqual({
+    expect(createDisplayTable(value)).toEqual({
       columns: ["owner.id", "owner.id"],
       rows: [["1", "literal"]],
     });
@@ -220,6 +227,15 @@ describe("createTableModel", () => {
     42,
     null,
   ])("returns no table when no eligible array property exists", (value) => {
-    expect(createTableModel(value)).toBeNull();
+    expect(createDisplayTable(value)).toBeNull();
+  });
+
+  it("retains raw values and distinct stable keys for duplicate display labels", () => {
+    const model = createTableModel({
+      records: [{ owner: { id: 2 }, "owner.id": "10" }],
+    });
+
+    expect(model?.columnKeys).toEqual(['["owner","id"]', '["owner.id",null]']);
+    expect(model?.sortValues).toEqual([[2, "10"]]);
   });
 });
