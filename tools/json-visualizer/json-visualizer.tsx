@@ -86,6 +86,7 @@ export function JsonVisualizer() {
   const tableTabId = useId();
   const treePanelId = useId();
   const tablePanelId = useId();
+  const inputPaneContentId = useId();
   const [jsonText, setJsonText] = useState("");
   const [filterText, setFilterText] = useState("");
   const [evaluation, setEvaluation] = useState<Evaluation>(() => evaluate("", ""));
@@ -98,6 +99,7 @@ export function JsonVisualizer() {
   const [showingFormattedPaste, setShowingFormattedPaste] = useState(false);
   const [isReadingClipboard, setIsReadingClipboard] = useState(false);
   const [fileStatus, setFileStatus] = useState<FileStatus | null>(null);
+  const [isInputCollapsed, setIsInputCollapsed] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const fileLoadIdRef = useRef(0);
   const filterInputRef = useRef<HTMLTextAreaElement>(null);
@@ -357,14 +359,43 @@ export function JsonVisualizer() {
     .join(" ");
 
   return (
-    <section className="workspace" aria-label="JSON filtering workspace">
-      <div className="pane input-pane">
-        <div className="section-heading">
+    <section
+      className={`workspace ${isInputCollapsed ? "input-collapsed" : ""}`}
+      aria-label="JSON filtering workspace"
+    >
+      <div className={`pane input-pane ${isInputCollapsed ? "is-collapsed" : ""}`}>
+        <button
+          type="button"
+          className="collapsed-input-button"
+          aria-expanded={!isInputCollapsed}
+          aria-controls={inputPaneContentId}
+          hidden={!isInputCollapsed}
+          onClick={() => setIsInputCollapsed(false)}
+        >
+          <span aria-hidden="true">›</span>
+          <span>Expand input</span>
+        </button>
+        <div
+          id={inputPaneContentId}
+          className="input-pane-content"
+          hidden={isInputCollapsed}
+        >
+          <div className="section-heading">
           <div>
             <span className="step-number">01</span>
             <h2>Source JSON</h2>
           </div>
           <div className="source-actions">
+            <button
+              type="button"
+              className="pane-toggle-button"
+              aria-expanded={!isInputCollapsed}
+              aria-controls={inputPaneContentId}
+              onClick={() => setIsInputCollapsed(true)}
+            >
+              <span aria-hidden="true">‹</span>
+              Collapse input
+            </button>
             <button
               type="button"
               className="paste-button"
@@ -390,8 +421,8 @@ export function JsonVisualizer() {
             </button>
             <span className="privacy-badge">Local only</span>
           </div>
-        </div>
-        <input
+          </div>
+          <input
           ref={fileInputRef}
           className="visually-hidden"
           type="file"
@@ -399,10 +430,10 @@ export function JsonVisualizer() {
           aria-label="JSON file"
           onChange={handleJsonFileChange}
         />
-        <label className="visually-hidden" htmlFor="json-input">
+          <label className="visually-hidden" htmlFor="json-input">
           Source JSON
         </label>
-        <textarea
+          <textarea
           id="json-input"
           className="code-area"
           value={jsonText}
@@ -413,19 +444,20 @@ export function JsonVisualizer() {
           aria-invalid={Boolean(evaluation.jsonError)}
           aria-describedby={evaluation.jsonError ? jsonErrorId : undefined}
         />
-        <p
+          <p
           id={jsonErrorId}
           className={`field-message error-message ${evaluation.jsonError ? "" : "is-hidden"}`}
           role="alert"
         >
           {evaluation.jsonError ?? "Valid JSON"}
         </p>
-        <p
+          <p
           className={`field-message file-message ${fileStatus?.isError ? "error-message" : ""}`}
           aria-live="polite"
         >
           {fileStatus?.message ?? ""}
-        </p>
+          </p>
+        </div>
       </div>
 
       <div className="pane result-pane">

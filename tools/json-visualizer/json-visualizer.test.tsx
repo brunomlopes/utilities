@@ -643,4 +643,24 @@ describe("JsonVisualizer", () => {
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith('{ "a": 1 }');
     expect(screen.getByText("Copied to clipboard.")).toBeInTheDocument();
   });
+
+  it("collapses and restores the input pane without losing its content", () => {
+    render(<JsonVisualizer />);
+    const sourceInput = screen.getByLabelText("Source JSON");
+    fireEvent.change(sourceInput, { target: { value: '{"kept":true}' } });
+
+    const collapseButton = screen.getByRole("button", { name: "Collapse input" });
+    fireEvent.click(collapseButton);
+
+    expect(collapseButton).not.toBeVisible();
+    expect(sourceInput).not.toBeVisible();
+    expect(screen.getByRole("region", { name: "JSON filtering workspace" })).toHaveClass(
+      "input-collapsed",
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Expand input" }));
+
+    expect(sourceInput).toBeVisible();
+    expect(sourceInput).toHaveValue('{"kept":true}');
+  });
 });
