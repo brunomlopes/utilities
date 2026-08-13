@@ -8,11 +8,35 @@
 }
 
 .tool-hero {
+  margin-bottom: 28px;
+}
+
+.tool-hero-content {
   display: flex;
+  width: 100%;
   align-items: end;
   justify-content: space-between;
   gap: 32px;
-  margin-bottom: 28px;
+}
+
+.tool-hero-content[hidden],
+.header-expand-button[hidden] {
+  display: none;
+}
+
+.tool-hero-aside {
+  display: flex;
+  align-items: flex-end;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.tool-hero.is-collapsed {
+  display: flex;
+  min-height: 42px;
+  margin-bottom: 12px;
+  align-items: center;
+  justify-content: flex-end;
 }
 
 .back-link {
@@ -452,7 +476,9 @@
 .load-button,
 .format-button,
 .copy-button,
-.pane-toggle-button {
+.pane-toggle-button,
+.header-toggle-button,
+.header-expand-button {
   padding: 8px 13px;
   border: 1px solid var(--teal);
   border-radius: 9px;
@@ -468,7 +494,9 @@
 .load-button:hover:not(:disabled),
 .format-button:hover:not(:disabled),
 .copy-button:hover:not(:disabled),
-.pane-toggle-button:hover:not(:disabled) {
+.pane-toggle-button:hover:not(:disabled),
+.header-toggle-button:hover:not(:disabled),
+.header-expand-button:hover:not(:disabled) {
   transform: translateY(-1px);
 }
 
@@ -477,6 +505,8 @@
 .format-button:focus-visible,
 .copy-button:focus-visible,
 .pane-toggle-button:focus-visible,
+.header-toggle-button:focus-visible,
+.header-expand-button:focus-visible,
 .collapsed-input-button:focus-visible {
   outline: 3px solid rgb(23 78 71 / 24%);
   outline-offset: 2px;
@@ -533,10 +563,14 @@
     padding-top: 28px;
   }
 
-  .tool-hero {
+  .tool-hero-content {
     align-items: start;
     flex-direction: column;
     gap: 18px;
+  }
+
+  .tool-hero-aside {
+    align-items: flex-start;
   }
 
   .workspace {
