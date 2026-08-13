@@ -7,3 +7,7 @@
 - Do not introduce Server Actions, server-only data fetching, Route Handlers, API routes, middleware/proxy logic, or other server-runtime dependencies unless the specification explicitly requests them.
 - Prefer static-export-compatible implementations by default.
 - Do not treat an agent's architectural preference or an inferred optimization as an explicit server-side requirement.
+
+## Agent behaviour
+
+Alwayas ask any questions regarding the work to be done and wait for an answer. Do not assume or timeout.
