@@ -96,6 +96,7 @@ export function JsonVisualizer() {
   const [copyStatus, setCopyStatus] = useState("");
   const [pasteVersions, setPasteVersions] = useState<PasteVersions | null>(null);
   const [showingFormattedPaste, setShowingFormattedPaste] = useState(false);
+  const [isReadingClipboard, setIsReadingClipboard] = useState(false);
   const [fileStatus, setFileStatus] = useState<FileStatus | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const fileLoadIdRef = useRef(0);
@@ -299,15 +300,7 @@ export function JsonVisualizer() {
     }
   }
 
-  function handleJsonPaste(event: ClipboardEvent<HTMLTextAreaElement>) {
-    const pastedText = event.clipboardData.getData("text");
-    const selectionStart = event.currentTarget.selectionStart;
-    const selectionEnd = event.currentTarget.selectionEnd;
-    const raw = `${jsonText.slice(0, selectionStart)}${pastedText}${jsonText.slice(selectionEnd)}`;
-
-    event.preventDefault();
-    setFileStatus(null);
-
+  function replaceWithPastedText(raw: string) {
     try {
       const parsed = JSON.parse(raw) as JsonValue;
       const formatted = JSON.stringify(parsed, null, 2);
@@ -320,6 +313,35 @@ export function JsonVisualizer() {
       setShowingFormattedPaste(false);
       setJsonText(raw);
     }
+  }
+
+  async function pasteClipboardContent() {
+    setIsReadingClipboard(true);
+    setFileStatus({ message: "Reading clipboard…", isError: false });
+
+    try {
+      const text = await navigator.clipboard.readText();
+      replaceWithPastedText(text);
+      setFileStatus({ message: "Pasted clipboard content.", isError: false });
+    } catch {
+      setFileStatus({
+        message: "Could not read the clipboard. Allow clipboard access and try again.",
+        isError: true,
+      });
+    } finally {
+      setIsReadingClipboard(false);
+    }
+  }
+
+  function handleJsonPaste(event: ClipboardEvent<HTMLTextAreaElement>) {
+    const pastedText = event.clipboardData.getData("text");
+    const selectionStart = event.currentTarget.selectionStart;
+    const selectionEnd = event.currentTarget.selectionEnd;
+    const raw = `${jsonText.slice(0, selectionStart)}${pastedText}${jsonText.slice(selectionEnd)}`;
+
+    event.preventDefault();
+    setFileStatus(null);
+    replaceWithPastedText(raw);
   }
 
   function togglePasteFormatting() {
@@ -343,6 +365,14 @@ export function JsonVisualizer() {
             <h2>Source JSON</h2>
           </div>
           <div className="source-actions">
+            <button
+              type="button"
+              className="paste-button"
+              onClick={pasteClipboardContent}
+              disabled={isReadingClipboard}
+            >
+              {isReadingClipboard ? "Pasting…" : "Paste content"}
+            </button>
             <button
               type="button"
               className="load-button"

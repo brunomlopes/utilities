@@ -397,6 +397,7 @@
   color: var(--teal);
 }
 
+.paste-button,
 .load-button,
 .format-button,
 .copy-button {
@@ -411,12 +412,14 @@
   transition: transform 120ms ease, opacity 120ms ease;
 }
 
+.paste-button:hover:not(:disabled),
 .load-button:hover:not(:disabled),
 .format-button:hover:not(:disabled),
 .copy-button:hover:not(:disabled) {
   transform: translateY(-1px);
 }
 
+.paste-button:focus-visible,
 .load-button:focus-visible,
 .format-button:focus-visible,
 .copy-button:focus-visible {
@@ -424,6 +427,7 @@
   outline-offset: 2px;
 }
 
+.paste-button:disabled,
 .format-button:disabled,
 .copy-button:disabled {
   cursor: not-allowed;

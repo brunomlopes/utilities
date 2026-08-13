@@ -7,7 +7,10 @@ describe("JsonVisualizer", () => {
     vi.useFakeTimers();
     Object.defineProperty(navigator, "clipboard", {
       configurable: true,
-      value: { writeText: vi.fn().mockResolvedValue(undefined) },
+      value: {
+        readText: vi.fn().mockResolvedValue(""),
+        writeText: vi.fn().mockResolvedValue(undefined),
+      },
     });
   });
 
@@ -95,6 +98,57 @@ describe("JsonVisualizer", () => {
 
     expect(click).toHaveBeenCalledOnce();
     expect(fileInput).toHaveAttribute("accept", ".json,application/json");
+  });
+
+  it("replaces the source with formatted clipboard content", async () => {
+    vi.mocked(navigator.clipboard.readText).mockResolvedValue(' { "from": "clipboard" } ');
+    render(<JsonVisualizer />);
+    fireEvent.change(screen.getByLabelText("Source JSON"), {
+      target: { value: '{"existing":true}' },
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Paste content" }));
+      await Promise.resolve();
+    });
+
+    expect(navigator.clipboard.readText).toHaveBeenCalledOnce();
+    expect(screen.getByLabelText("Source JSON")).toHaveValue(
+      '{\n  "from": "clipboard"\n}',
+    );
+    expect(screen.getByRole("button", { name: "Revert formatting" })).toBeEnabled();
+    expect(screen.getByText("Pasted clipboard content.")).toBeInTheDocument();
+  });
+
+  it("replaces the source with invalid clipboard content without formatting it", async () => {
+    vi.mocked(navigator.clipboard.readText).mockResolvedValue("not json");
+    render(<JsonVisualizer />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Paste content" }));
+      await Promise.resolve();
+    });
+
+    expect(screen.getByLabelText("Source JSON")).toHaveValue("not json");
+    expect(screen.getByRole("button", { name: "Apply formatting" })).toBeDisabled();
+  });
+
+  it("announces clipboard failures without replacing the source", async () => {
+    vi.mocked(navigator.clipboard.readText).mockRejectedValue(new Error("denied"));
+    render(<JsonVisualizer />);
+    fireEvent.change(screen.getByLabelText("Source JSON"), {
+      target: { value: '{"existing":true}' },
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Paste content" }));
+      await Promise.resolve();
+    });
+
+    expect(screen.getByLabelText("Source JSON")).toHaveValue('{"existing":true}');
+    expect(
+      screen.getByText("Could not read the clipboard. Allow clipboard access and try again."),
+    ).toHaveClass("error-message");
   });
 
   it("loads a JSON file as the source and evaluates it", async () => {
