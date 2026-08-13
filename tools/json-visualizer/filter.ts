@@ -12,7 +12,13 @@ export interface BracketFilterClause {
   children: FilterClause[];
 }
 
-export type FilterClause = PlainFilterClause | BracketFilterClause;
+export interface EqualityFilterClause {
+  type: "equality";
+  name: string;
+  expectedValue: string;
+}
+
+export type FilterClause = PlainFilterClause | BracketFilterClause | EqualityFilterClause;
 
 export interface FilterResult {
   matched: boolean;
@@ -69,6 +75,11 @@ class FilterParser {
     const name = this.parseName();
     this.skipWhitespace();
 
+    if (this.peek() === "=") {
+      this.position += 1;
+      return { type: "equality", name, expectedValue: this.parseExpectedValue() };
+    }
+
     if (this.peek() !== "[") return { type: "plain", name };
 
     this.position += 1;
@@ -88,7 +99,7 @@ class FilterParser {
     }
 
     const start = this.position;
-    while (!this.atEnd() && !",[]".includes(this.peek())) {
+    while (!this.atEnd() && !",=[]".includes(this.peek())) {
       if (this.peek() === '"') this.fail("Quotes must surround the entire property name");
       this.position += 1;
     }
@@ -98,7 +109,29 @@ class FilterParser {
     return name;
   }
 
+  private parseExpectedValue(): string {
+    this.skipWhitespace();
+    if (this.atEnd() || ",[]".includes(this.peek())) {
+      this.fail("Expected a comparison value after '='");
+    }
+    if (this.peek() === '"') return this.parseQuotedString("comparison value");
+
+    const start = this.position;
+    while (!this.atEnd() && !",[]".includes(this.peek())) {
+      if (this.peek() === '"') this.fail("Quotes must surround the entire comparison value");
+      this.position += 1;
+    }
+
+    const value = this.source.slice(start, this.position).trim();
+    if (!value) this.fail("Comparison values cannot be empty", start);
+    return value;
+  }
+
   private parseQuotedName(): string {
+    return this.parseQuotedString("property name");
+  }
+
+  private parseQuotedString(description: string): string {
     const start = this.position;
     this.position += 1;
     let escaped = false;
@@ -120,12 +153,12 @@ class FilterParser {
         try {
           return JSON.parse(literal) as string;
         } catch {
-          this.fail("Invalid JSON string escape", start);
+          this.fail(`Invalid JSON string escape in ${description}`, start);
         }
       }
     }
 
-    this.fail("Unclosed quoted property name", start);
+    this.fail(`Unclosed quoted ${description}`, start);
   }
 
   private skipWhitespace(): void {
@@ -204,6 +237,7 @@ export function filterJson(value: JsonValue, clauses: FilterClause[]): FilterRes
     type: FilterClause["type"];
     pattern: NamePattern;
     recursive: boolean;
+    expectedValue?: string;
     children?: CompiledClause[];
   }
 
@@ -212,6 +246,7 @@ export function filterJson(value: JsonValue, clauses: FilterClause[]): FilterRes
       type: clause.type,
       pattern: compileNamePattern(clause.name),
       recursive: clause.type === "bracket" && clause.name === "*",
+      expectedValue: clause.type === "equality" ? clause.expectedValue : undefined,
       children: clause.type === "bracket" ? clause.children.map(compileClause) : undefined,
     };
   }
@@ -232,8 +267,59 @@ export function filterJson(value: JsonValue, clauses: FilterClause[]): FilterRes
 
     const result: { [key: string]: JsonValue } = {};
     let matched = false;
+    const directEqualityClauses = directClauses?.filter((clause) => clause.type === "equality") ?? [];
+    const globalEqualityClauses = globalClauses.filter((clause) => clause.type === "equality");
+    const objectEntries = Object.entries(current);
 
-    for (const [key, child] of Object.entries(current)) {
+    function conditionMatches(
+      [key, child]: [string, JsonValue],
+      clause: CompiledClause,
+    ): boolean {
+      return (
+        matchesNamePattern(key, clause.pattern) &&
+        (child === null || typeof child !== "object") &&
+        String(child) === clause.expectedValue
+      );
+    }
+
+    const hasDirectConditionMatch = directEqualityClauses.some((clause) =>
+      objectEntries.some((entry) => conditionMatches(entry, clause)),
+    );
+    if (directEqualityClauses.length > 0 && !hasDirectConditionMatch) {
+      return { matched: false, value: result };
+    }
+
+    const hasApplicableGlobalCondition = globalEqualityClauses.some((clause) =>
+      objectEntries.some(([key]) => matchesNamePattern(key, clause.pattern)),
+    );
+    const hasGlobalConditionMatch = globalEqualityClauses.some((clause) =>
+      objectEntries.some((entry) => conditionMatches(entry, clause)),
+    );
+    if (hasApplicableGlobalCondition && !hasGlobalConditionMatch) {
+      return { matched: false, value: result };
+    }
+
+    const activeEqualityClauses =
+      directEqualityClauses.length > 0 ? directEqualityClauses : globalEqualityClauses;
+    const preserveUnselectedProperties =
+      directEqualityClauses.length > 0
+        ? directClauses?.every((clause) => clause.type === "equality")
+        : hasApplicableGlobalCondition && globalClauses.every((clause) => clause.type === "equality");
+
+    if (preserveUnselectedProperties) {
+      for (const [key, child] of objectEntries) {
+        if (
+          !activeEqualityClauses.some((clause) => matchesNamePattern(key, clause.pattern))
+        ) {
+          result[key] = child;
+        }
+      }
+      return { matched: true, value: result };
+    }
+
+    matched = hasDirectConditionMatch || hasGlobalConditionMatch;
+
+    for (const [key, child] of objectEntries) {
       const matchingGlobalClauses = globalClauses.filter((clause) =>
         matchesNamePattern(key, clause.pattern),
       );

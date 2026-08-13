@@ -70,7 +70,34 @@ describe("parseFilter", () => {
     ]);
   });
 
-  it.each(["a,", "a[]", "a[b,]", "a[b", "a[[b]]", "a[b]]", '"open', 'a"b']) (
+  it("parses equality predicates with bare and quoted values", () => {
+    expect(parseFilter('items[status=active,status="keep active",enabled=true,value=null]')).toEqual([
+      {
+        type: "bracket",
+        name: "items",
+        children: [
+          { type: "equality", name: "status", expectedValue: "active" },
+          { type: "equality", name: "status", expectedValue: "keep active" },
+          { type: "equality", name: "enabled", expectedValue: "true" },
+          { type: "equality", name: "value", expectedValue: "null" },
+        ],
+      },
+    ]);
+  });
+
+  it.each([
+    "a,",
+    "a[]",
+    "a[b,]",
+    "a[b",
+    "a[[b]]",
+    "a[b]]",
+    '"open',
+    'a"b',
+    "a=",
+    "a=[]",
+    'a="open',
+  ]) (
     "rejects malformed expression %s",
     (expression) => expect(() => parseFilter(expression)).toThrow(FilterSyntaxError),
   );
@@ -270,6 +297,94 @@ describe("filterJson", () => {
           },
         },
       ],
+    });
+  });
+
+  it("filters array items by equality without projecting the predicate property", () => {
+    const input: JsonValue = {
+      items: [
+        { id: 1, status: "active" },
+        { id: 2, status: "inactive" },
+        { id: 3, status: "active" },
+      ],
+    };
+
+    expect(filterJson(input, parseFilter("items[id,status=active]")).value).toEqual({
+      items: [{ id: 1 }, { id: 3 }],
+    });
+    expect(filterJson(input, parseFilter("items[status=active]")).value).toEqual({
+      items: [{ id: 1 }, { id: 3 }],
+    });
+  });
+
+  it("projects a predicate property only when it also has a plain selector", () => {
+    const input: JsonValue = {
+      items: [
+        { status: "active", ignored: 1 },
+        { status: "inactive", ignored: 2 },
+      ],
+    };
+
+    expect(filterJson(input, parseFilter("items[status,status=active]")).value).toEqual({
+      items: [{ status: "active" }],
+    });
+  });
+
+  it("combines repeated equality predicates with OR semantics", () => {
+    const input: JsonValue = {
+      items: [
+        { status: "active" },
+        { status: "paused" },
+        { status: "archived" },
+      ],
+    };
+
+    expect(
+      filterJson(input, parseFilter("items[status,status=active,status=paused]")).value,
+    ).toEqual({
+      items: [{ status: "active" }, { status: "paused" }],
+    });
+  });
+
+  it("matches scalar values by text across strings, numbers, booleans, and null", () => {
+    const input: JsonValue = {
+      groups: {
+        booleans: [{ value: true, id: 1 }, { value: "true", id: 2 }, { value: false, id: 3 }],
+        nulls: [{ value: null, id: 4 }, { value: "null", id: 5 }],
+        numbers: [{ value: 42, id: 6 }, { value: "42", id: 7 }],
+        phrases: [{ status: "keep active", id: 8 }, { status: "inactive", id: 9 }],
+      },
+    };
+
+    expect(filterJson(input, parseFilter("booleans[id,value=true]")).value).toEqual({
+      groups: { booleans: [{ id: 1 }, { id: 2 }] },
+    });
+    expect(filterJson(input, parseFilter("nulls[id,value=null]")).value).toEqual({
+      groups: { nulls: [{ id: 4 }, { id: 5 }] },
+    });
+    expect(filterJson(input, parseFilter("numbers[id,value=42]")).value).toEqual({
+      groups: { numbers: [{ id: 6 }, { id: 7 }] },
+    });
+    expect(filterJson(input, parseFilter('phrases[id,status="keep active"]')).value).toEqual({
+      groups: { phrases: [{ id: 8 }] },
+    });
+  });
+
+  it("supports equality predicates as global and deeply nested clauses", () => {
+    const input: JsonValue = {
+      root: {
+        items: [
+          { id: 1, details: { status: "active", title: "Keep" } },
+          { id: 2, details: { status: "inactive", title: "Drop" } },
+        ],
+      },
+    };
+
+    expect(filterJson(input, parseFilter("status=active,title")).value).toEqual({
+      root: { items: [{ details: { title: "Keep" } }] },
+    });
+    expect(filterJson(input, parseFilter("items[details[title,status=active]]")).value).toEqual({
+      root: { items: [{ details: { title: "Keep" } }] },
     });
   });
 

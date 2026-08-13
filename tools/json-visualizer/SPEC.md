@@ -7,13 +7,37 @@ This should be a client side application in react, using the current best practi
 ### Filter definition
 
 The filter to apply is described as follows:
-- "a,b,c" shows all objects where there is at least one sub-property with those names
-- "x[a,b,c]" shows all object, where there is at least one sub-property x with one of these names
-- when x is an array, "x[a],b" should apply the "a" filter to all items on the array x. 
-- * can be used to wildcard properties. "zxc*" should match "zxc","zxcvd","zxckmam"
-- x[a=42] can be used to only show items where `a=42`
-- Nested filters should work. FollowUps[Content[Title]] should filter according to example 7
-- Nested selectors match direct children, while a nested standalone `*` crosses any number of descendant levels recursively. For example, `Stages[*[Content[Title]]]` filters according to example 8.
+- Filter 1. "a,b,c" shows all objects where there is at least one sub-property with those names
+- Filter 2. "x[a,b,c]" shows all object, where there is at least one sub- Filter 1.property x with one of these names
+- Filter 3. when x is an array, "x[a],b" should apply the "a" filter to all items on the array x.
+- Filter 4. * can be used to wildcard properties. "zxc*" should match "zxc","zxcvd","zxckmam"
+- Filter 5. x[a=42] can be used to only show items where `a=42`. This filter can appear anywhere where a property is used. The property being filtered does not appear
+- Filter 6. x[a,a=42] can be used to show property a, and filter by a=42
+- Filter 7. x[a,a=42,a=27] can be used to show property a, and filter by either a=42 or a=27
+- Filter 8. Nested filters should work. FollowUps[Content[Title]] should filter according to example 7
+- Filter 9. Nested selectors match direct children, while a nested standalone `*` crosses any number of descendant levels recursively. For example, `Stages[*[Content[Title]]]` filters according to example 8.
+
+Filters 5–7 compare scalar values by their text. Bare values support strings without spaces,
+numbers, booleans, and `null`; JSON-quoted values support spaces and escapes. Consequently,
+`enabled=true` matches both boolean `true` and string `"true"`, while
+`status="keep active"` matches the string `"keep active"`. Repeated predicates in the same
+selector use OR logic.
+
+For example, given:
+
+```json
+{
+  "items": [
+    { "id": 1, "status": "active" },
+    { "id": 2, "status": "keep active" },
+    { "id": 3, "status": "archived" }
+  ]
+}
+```
+
+- `items[status=active]` returns `{ "items": [{ "id": 1 }] }`; the matching item's other properties are retained while predicate-only `status` is omitted. `items[id,status=active]` produces the same result by explicitly projecting only `id`.
+- `items[status,status="keep active"]` returns `{ "items": [{ "status": "keep active" }] }`; the plain `status` selector projects the predicate property.
+- `items[status,status=active,status=archived]` returns the first and third items with their `status` properties, because either predicate may match.
 
 ### UI behaviour
 
@@ -27,7 +51,8 @@ This table contains as headers the subproperties of objects found on the array, 
 - UI.6 When rendering a table, if an array only has one item, search the sub-items, breadth first, until you find an array with more than one item. Apply this recursively until finding either one array with more than one item, or it's the last array. See example 5 below
 - UI.7 The table allows sorting values by column. Clicking on each column toggles between original-order,ascending,descending. When toggling the order of a column, there is an indicator if it's ascending or descending. Order is case-insensitive.
 - UI.8 On the output section, there is a checkbox, set by default, named "Compact output". When this checkbox is set, the output is formatted in a compact way, where an object with just one item or property is rendered in the same line. See Example 6.
-
+- UI.9 On the input side of the ui, there is a button to colapse the input side, which expands the filter + output side
+- UI.10 On the header, there is a button to colapse the header so that the input + output boxes take up more of the screen
 
 
 ### Examples
@@ -373,3 +398,72 @@ When filtered by `Stages[*[Content[Title]]]`, it appears as:
 }
 ```
 
+
+#### Example 9
+
+The following input 
+
+```json
+{
+  "Content": {
+    "Title": "Innovation Challenge Workflow"
+  },
+  "Stages": [
+    {
+      "Id":1,
+      "Content": {
+        "Title": "Submission"
+      },
+      "FollowUps": [
+        {
+          "Content": {
+            "Title": "Rate Idea"
+          }
+        },
+        {
+          "Content": {
+            "Title": "Pick for Evaluation"
+          }
+        },
+        {
+          "Content": {
+            "Title": "Close Idea"
+          }
+        }
+      ]
+    },
+    {
+      "Id":2,
+      "Content": {
+        "Title": "Validation"
+      },
+      "FollowUps": [
+        {
+          "Content": {
+            "Title": "Val 1"
+          }
+        },
+        {
+          "Content": {
+            "Title": "Val 2"
+          }
+        }
+      ]
+    }
+  ]
+}
+```
+When filtered by `Stages[Id:2,FollowUps[Content[Title]]` would appear as
+```json
+{
+  "Stages": [
+    {
+      "FollowUps": [
+        { "Content": { "Title": "Rate Idea" } },
+        { "Content": { "Title": "Pick for Evaluation" } },
+        { "Content": { "Title": "Close Idea" } }
+      ]
+    }
+  ]
+}
+```
