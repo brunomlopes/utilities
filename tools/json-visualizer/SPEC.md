@@ -23,6 +23,7 @@ This table contains as headers the subproperties of objects found on the array, 
 - UI.5 When rendering a table, flatten an object if the subproperties are all primitives. See example 4 below
 - UI.6 When rendering a table, if an array only has one item, search the sub-items, breadth first, until you find an array with more than one item. Apply this recursively until finding either one array with more than one item, or it's the last array. See example 5 below
 - UI.7 The table allows sorting values by column. Clicking on each column toggles between original-order,ascending,descending. When toggling the order of a column, there is an indicator if it's ascending or descending. Order is case-insensitive.
+- UI.8 On the output section, there is a checkbox, set by default, named "Compact output". When this checkbox is set, the output is formatted in a compact way, where an object with just one item or property is rendered in the same line. See Example 6.
 
 ### Examples
 
@@ -206,3 +207,63 @@ A table format would be
 |------|-------|
 | nbf | 1785405758  |
 | exp | 1785406058  |
+
+#### Example 6
+
+When output is compact, the following JSON :
+
+{
+  "Content": {
+    "Title": "Innovation Challenge Workflow"
+  },
+  "Stages": [
+    {
+      "Id": "1",
+      "Content": {
+        "Title": "Submission"
+      },
+      "OnEnter": {
+        "Actions": [
+          {
+            "Id": "19e0547e-a103-4874-8bfb-35bc5706f427"
+          },
+          {
+            "Id": "7a71881a-b239-4599-b855-c93795ceaba3"
+          },
+          {
+            "Id": "c19dfe27-c71c-49e3-9d09-214886cbe443"
+          }
+        ]
+      },
+      "OnDurationElapsed": {
+        "Actions": [
+          {
+            "Id": "7609e9e8-d5f3-4e90-bc8b-c865f09ad1b3"
+          }
+        ]
+      },
+    }
+  ]
+}
+```
+Should format as
+
+```
+{
+  "Content": { "Title": "Innovation Challenge Workflow" },
+  "Stages": [
+    {
+      "Id": "1",
+      "Content": { "Title": "Submission" },
+      "OnEnter": {
+        "Actions": [
+          { "Id": "19e0547e-a103-4874-8bfb-35bc5706f427" },
+          { "Id": "7a71881a-b239-4599-b855-c93795ceaba3" },
+          { "Id": "c19dfe27-c71c-49e3-9d09-214886cbe443" }
+        ]
+      },
+      "OnDurationElapsed": { "Actions": [ { "Id": "7609e9e8-d5f3-4e90-bc8b-c865f09ad1b3" } ] },
+    }
+  ]
+}
+```

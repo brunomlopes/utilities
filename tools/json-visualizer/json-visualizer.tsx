@@ -11,6 +11,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { formatCompactJson } from "./compact-format";
 import { filterJson, FilterSyntaxError, parseFilter, type JsonValue } from "./filter";
 import { createTableModel } from "./table-model";
 import { getSortedRowIndices, type SortDirection } from "./table-sort";
@@ -88,6 +89,8 @@ export function JsonVisualizer() {
   const [jsonText, setJsonText] = useState("");
   const [filterText, setFilterText] = useState("");
   const [evaluation, setEvaluation] = useState<Evaluation>(() => evaluate("", ""));
+  const [compactOutput, setCompactOutput] = useState(true);
+  const [outputMaximumColumns, setOutputMaximumColumns] = useState(Infinity);
   const [outputView, setOutputView] = useState<OutputView>("tree");
   const [sortState, setSortState] = useState<SortState | null>(null);
   const [copyStatus, setCopyStatus] = useState("");
@@ -97,6 +100,7 @@ export function JsonVisualizer() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const fileLoadIdRef = useRef(0);
   const filterInputRef = useRef<HTMLTextAreaElement>(null);
+  const outputInputRef = useRef<HTMLTextAreaElement>(null);
   const treeTabRef = useRef<HTMLButtonElement>(null);
   const tableTabRef = useRef<HTMLButtonElement>(null);
   const lastFilterResizeAtRef = useRef<number | null>(null);
@@ -113,6 +117,10 @@ export function JsonVisualizer() {
 
     return getSortedRowIndices(tableModel, activeSort.columnKey, activeSort.direction);
   }, [activeSort, tableModel]);
+  const output = useMemo(() => {
+    if (!evaluation.output || !compactOutput) return evaluation.output;
+    return formatCompactJson(evaluation.filteredValue as JsonValue, outputMaximumColumns);
+  }, [compactOutput, evaluation, outputMaximumColumns]);
 
   const resizeFilterInput = useCallback(() => {
     const input = filterInputRef.current;
@@ -176,9 +184,51 @@ export function JsonVisualizer() {
     };
   }, [scheduleFilterResize]);
 
+  useEffect(() => {
+    const outputInput = outputInputRef.current;
+    if (!outputInput) return;
+
+    function measureOutputWidth() {
+      if (!outputInput || outputInput.clientWidth === 0) return;
+
+      const styles = window.getComputedStyle(outputInput);
+      const horizontalPadding =
+        (Number.parseFloat(styles.paddingLeft) || 0) +
+        (Number.parseFloat(styles.paddingRight) || 0);
+      const contentWidth = outputInput.clientWidth - horizontalPadding;
+      const measuringText = document.createElement("span");
+      measuringText.style.position = "absolute";
+      measuringText.style.visibility = "hidden";
+      measuringText.style.whiteSpace = "pre";
+      measuringText.style.fontFamily = styles.fontFamily;
+      measuringText.style.fontSize = styles.fontSize;
+      measuringText.style.fontStyle = styles.fontStyle;
+      measuringText.style.fontWeight = styles.fontWeight;
+      measuringText.textContent = "0".repeat(100);
+      document.body.append(measuringText);
+      const measuredWidth = measuringText.getBoundingClientRect().width;
+      measuringText.remove();
+
+      const fallbackCharacterWidth = (Number.parseFloat(styles.fontSize) || 14) * 0.6;
+      const characterWidth = measuredWidth > 0 ? measuredWidth / 100 : fallbackCharacterWidth;
+      setOutputMaximumColumns(Math.max(1, Math.floor(contentWidth / characterWidth)));
+    }
+
+    measureOutputWidth();
+    if (typeof ResizeObserver === "undefined") {
+      window.addEventListener("resize", measureOutputWidth);
+      return () => window.removeEventListener("resize", measureOutputWidth);
+    }
+
+    const observer = new ResizeObserver(measureOutputWidth);
+    observer.observe(outputInput);
+
+    return () => observer.disconnect();
+  }, []);
+
   async function copyOutput() {
     try {
-      await navigator.clipboard.writeText(evaluation.output);
+      await navigator.clipboard.writeText(output);
       setCopyStatus("Copied to clipboard.");
     } catch {
       setCopyStatus("Could not copy. Select the output and copy it manually.");
@@ -389,14 +439,27 @@ export function JsonVisualizer() {
             <span className="step-number">03</span>
             <h2>Filtered output</h2>
           </div>
-          <button
-            type="button"
-            className="copy-button"
-            onClick={copyOutput}
-            disabled={!evaluation.output}
-          >
-            Copy JSON
-          </button>
+          <div className="output-actions">
+            <label className="compact-toggle">
+              <input
+                type="checkbox"
+                checked={compactOutput}
+                onChange={(event) => {
+                  setCompactOutput(event.target.checked);
+                  setCopyStatus("");
+                }}
+              />
+              Compact output
+            </label>
+            <button
+              type="button"
+              className="copy-button"
+              onClick={copyOutput}
+              disabled={!output}
+            >
+              Copy JSON
+            </button>
+          </div>
         </div>
         <div className="output-tabs" role="tablist" aria-label="Filtered output views">
           <button
@@ -439,9 +502,10 @@ export function JsonVisualizer() {
             Filtered JSON output
           </label>
           <textarea
+            ref={outputInputRef}
             id="json-output"
             className="code-area output-area"
-            value={evaluation.output}
+            value={output}
             placeholder="Filtered JSON appears here"
             readOnly
             spellCheck={false}

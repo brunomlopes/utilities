@@ -13,6 +13,7 @@ describe("JsonVisualizer", () => {
 
   afterEach(() => {
     cleanup();
+    vi.unstubAllGlobals();
     vi.useRealTimers();
   });
 
@@ -111,7 +112,7 @@ describe("JsonVisualizer", () => {
 
     fireEvent.change(screen.getByLabelText("Filter expression"), { target: { value: "a" } });
     act(() => vi.advanceTimersByTime(250));
-    expect(screen.getByLabelText("Filtered JSON output")).toHaveValue('{\n  "a": 1\n}');
+    expect(screen.getByLabelText("Filtered JSON output")).toHaveValue('{ "a": 1 }');
   });
 
   it("clears stale paste formatting when a file is loaded", async () => {
@@ -220,7 +221,7 @@ describe("JsonVisualizer", () => {
 
     expect(screen.getByLabelText("Filtered JSON output")).toHaveValue("");
     act(() => vi.advanceTimersByTime(250));
-    expect(screen.getByLabelText("Filtered JSON output")).toHaveValue('{\n  "a": 1\n}');
+    expect(screen.getByLabelText("Filtered JSON output")).toHaveValue('{ "a": 1 }');
     expect(screen.getByLabelText("Filtered JSON output")).toHaveAttribute("readonly");
   });
 
@@ -503,11 +504,70 @@ describe("JsonVisualizer", () => {
     ).toBeVisible();
   });
 
-  it("pretty-prints all valid JSON when the filter is blank", () => {
+  it("enables compact output by default and can restore standard pretty-printing", () => {
     render(<JsonVisualizer />);
     update('{"a":1}', "");
     act(() => vi.advanceTimersByTime(250));
+
+    const compactToggle = screen.getByRole("checkbox", { name: "Compact output" });
+    expect(compactToggle).toBeChecked();
+    expect(screen.getByLabelText("Filtered JSON output")).toHaveValue('{ "a": 1 }');
+
+    fireEvent.click(compactToggle);
+    expect(compactToggle).not.toBeChecked();
     expect(screen.getByLabelText("Filtered JSON output")).toHaveValue('{\n  "a": 1\n}');
+  });
+
+  it("reformats compact output when the output control width changes", () => {
+    let resizeCallback: ResizeObserverCallback = () => undefined;
+    let outputWidth = 500;
+    const originalClientWidth = Object.getOwnPropertyDescriptor(
+      HTMLTextAreaElement.prototype,
+      "clientWidth",
+    );
+
+    class ResizeObserverStub {
+      constructor(callback: ResizeObserverCallback) {
+        resizeCallback = callback;
+      }
+
+      observe() {}
+      disconnect() {}
+      unobserve() {}
+    }
+
+    vi.stubGlobal("ResizeObserver", ResizeObserverStub);
+    Object.defineProperty(HTMLTextAreaElement.prototype, "clientWidth", {
+      configurable: true,
+      get: () => outputWidth,
+    });
+
+    try {
+      render(<JsonVisualizer />);
+      update('{"wrapper":{"value":"short"}}', "");
+      act(() => vi.advanceTimersByTime(250));
+      expect(screen.getByLabelText("Filtered JSON output")).toHaveValue(
+        '{ "wrapper": { "value": "short" } }',
+      );
+
+      outputWidth = 120;
+      act(() => resizeCallback([], {} as ResizeObserver));
+      expect(screen.getByLabelText("Filtered JSON output")).toHaveValue(`{
+  "wrapper": {
+    "value": "short"
+  }
+}`);
+    } finally {
+      if (originalClientWidth) {
+        Object.defineProperty(
+          HTMLTextAreaElement.prototype,
+          "clientWidth",
+          originalClientWidth,
+        );
+      } else {
+        delete (HTMLTextAreaElement.prototype as { clientWidth?: number }).clientWidth;
+      }
+    }
   });
 
   it("shows field errors and clears the output", () => {
@@ -526,7 +586,7 @@ describe("JsonVisualizer", () => {
     act(() => vi.advanceTimersByTime(250));
 
     await act(async () => screen.getByRole("button", { name: "Copy JSON" }).click());
-    expect(navigator.clipboard.writeText).toHaveBeenCalledWith('{\n  "a": 1\n}');
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith('{ "a": 1 }');
     expect(screen.getByText("Copied to clipboard.")).toBeInTheDocument();
   });
 });

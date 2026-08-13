@@ -180,6 +180,37 @@
   background: #f9f8f2;
 }
 
+.output-actions,
+.compact-toggle {
+  display: flex;
+  align-items: center;
+}
+
+.output-actions {
+  gap: 14px;
+}
+
+.compact-toggle {
+  gap: 7px;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.compact-toggle input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--teal);
+}
+
+.compact-toggle input:focus-visible {
+  outline: 3px solid rgb(23 78 71 / 24%);
+  outline-offset: 2px;
+}
+
 .output-tabs {
   display: flex;
   border-bottom: 1px solid var(--line);
@@ -461,6 +492,15 @@
 
   .section-heading {
     align-items: flex-start;
+  }
+
+  .output-heading {
+    align-items: flex-start;
+  }
+
+  .output-actions {
+    align-items: flex-end;
+    flex-direction: column-reverse;
   }
 
   .section-heading .source-actions {
