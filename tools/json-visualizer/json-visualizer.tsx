@@ -453,7 +453,8 @@ export function JsonVisualizer() {
           />
           <p id={filterHelpId} className="filter-help">
             Use <code>a,b</code> for keys anywhere or <code>x[a,b]</code> for direct children,
-            including items in an <code>x</code> array. Add <code>*</code> to wildcard names.
+            including items in an <code>x</code> array. Nest brackets for deeper direct children, or
+            use <code>*[...]</code> to search descendant levels recursively.
           </p>
           <p
             id={filterErrorId}

@@ -12,18 +12,23 @@ The filter to apply is described as follows:
 - when x is an array, "x[a],b" should apply the "a" filter to all items on the array x. 
 - * can be used to wildcard properties. "zxc*" should match "zxc","zxcvd","zxckmam"
 - x[a=42] can be used to only show items where `a=42`
+- Nested filters should work. FollowUps[Content[Title]] should filter according to example 7
+- Nested selectors match direct children, while a nested standalone `*` crosses any number of descendant levels recursively. For example, `Stages[*[Content[Title]]]` filters according to example 8.
 
 ### UI behaviour
 
 - UI.1 When json is pasted on the input, auto-format the json file. Add a button to revert auto-format
 - UI.2 The filter text box should increase vertically in size when the filter no longer fits
 - UI.3 On the input side of the UI, there is a button to load a json file. It takes the file and loads it to the json input
+- UI.3.1 On the input side of the UI there is a button to paste content. The button replaces the json input content with the contents from the user's clipboard
 - UI.4 On the output side of the UI, we have two tabs: One for the filtered json, named "tree", and another tab where we show a table with the results of the first property that is an array on the object, navigating breadth-first. See example 3 below.
 This table contains as headers the subproperties of objects found on the array, and as rows the property values.
 - UI.5 When rendering a table, flatten an object if the subproperties are all primitives. See example 4 below
 - UI.6 When rendering a table, if an array only has one item, search the sub-items, breadth first, until you find an array with more than one item. Apply this recursively until finding either one array with more than one item, or it's the last array. See example 5 below
 - UI.7 The table allows sorting values by column. Clicking on each column toggles between original-order,ascending,descending. When toggling the order of a column, there is an indicator if it's ascending or descending. Order is case-insensitive.
 - UI.8 On the output section, there is a checkbox, set by default, named "Compact output". When this checkbox is set, the output is formatted in a compact way, where an object with just one item or property is rendered in the same line. See Example 6.
+
+
 
 ### Examples
 
@@ -212,6 +217,7 @@ A table format would be
 
 When output is compact, the following JSON :
 
+```json
 {
   "Content": {
     "Title": "Innovation Challenge Workflow"
@@ -246,9 +252,10 @@ When output is compact, the following JSON :
   ]
 }
 ```
+
 Should format as
 
-```
+```json
 {
   "Content": { "Title": "Innovation Challenge Workflow" },
   "Stages": [
@@ -267,3 +274,102 @@ Should format as
   ]
 }
 ```
+
+#### Example 7
+
+The following input 
+
+```json
+{
+  "Content": {
+    "Title": "Innovation Challenge Workflow"
+  },
+  "Stages": [
+    {
+      "Content": {
+        "Title": "Submission"
+      },
+      "FollowUps": [
+        {
+          "Content": {
+            "Title": "Rate Idea"
+          }
+        },
+        {
+          "Content": {
+            "Title": "Pick for Evaluation"
+          }
+        },
+        {
+          "Content": {
+            "Title": "Close Idea"
+          }
+        }
+      ]
+    }
+  ]
+}
+```
+When filtered by `FollowUps[Content[Title]]` would appear as
+```json
+{
+  "Stages": [
+    {
+      "FollowUps": [
+        { "Content": { "Title": "Rate Idea" } },
+        { "Content": { "Title": "Pick for Evaluation" } },
+        { "Content": { "Title": "Close Idea" } }
+      ]
+    }
+  ]
+}
+```
+
+#### Example 8
+
+The following input demonstrates a recursive wildcard crossing branches of different depths:
+
+```json
+{
+  "Stages": [
+    {
+      "Content": { "Title": "Stage title" },
+      "DirectBranch": {
+        "Content": { "Title": "Direct match", "Summary": "Ignored" }
+      },
+      "DeepBranch": {
+        "Layer": {
+          "FollowUps": [
+            { "Content": { "Title": "Deep match", "Summary": "Ignored" } }
+          ]
+        }
+      },
+      "UnmatchedBranch": {
+        "Content": { "Summary": "No title" }
+      }
+    }
+  ]
+}
+```
+
+When filtered by `Stages[*[Content[Title]]]`, it appears as:
+
+```json
+{
+  "Stages": [
+    {
+      "DirectBranch": {
+        "Content": { "Title": "Direct match" }
+      },
+      "DeepBranch": {
+        "Layer": {
+          "FollowUps": [
+            { "Content": { "Title": "Deep match" } }
+          ]
+        }
+      }
+    }
+  ]
+}
+```
+

@@ -9,7 +9,7 @@ export interface PlainFilterClause {
 export interface BracketFilterClause {
   type: "bracket";
   name: string;
-  children: string[];
+  children: FilterClause[];
 }
 
 export type FilterClause = PlainFilterClause | BracketFilterClause;
@@ -32,58 +32,51 @@ class FilterParser {
   constructor(private readonly source: string) {}
 
   parse(): FilterClause[] {
-    const clauses: FilterClause[] = [];
     this.skipWhitespace();
-
-    if (this.atEnd()) return clauses;
-
-    while (!this.atEnd()) {
-      const name = this.parseName();
-      this.skipWhitespace();
-
-      if (this.peek() === "[") {
-        clauses.push({ type: "bracket", name, children: this.parseChildren() });
-      } else {
-        clauses.push({ type: "plain", name });
-      }
-
-      this.skipWhitespace();
-      if (this.atEnd()) break;
-      if (this.peek() !== ",") this.fail("Expected ',' between filter clauses");
-
-      this.position += 1;
-      this.skipWhitespace();
-      if (this.atEnd()) this.fail("Expected a filter clause after ','");
-    }
-
-    return clauses;
+    return this.atEnd() ? [] : this.parseClauseList();
   }
 
-  private parseChildren(): string[] {
-    this.position += 1;
-    this.skipWhitespace();
-    if (this.peek() === "]") this.fail("Bracket selectors must contain at least one name");
+  private parseClauseList(terminator?: "]"): FilterClause[] {
+    const clauses: FilterClause[] = [];
 
-    const children: string[] = [];
     while (!this.atEnd()) {
-      children.push(this.parseName());
+      clauses.push(this.parseClause());
       this.skipWhitespace();
 
-      if (this.peek() === "]") {
+      if (terminator && this.peek() === terminator) {
         this.position += 1;
-        return children;
+        return clauses;
       }
-      if (this.peek() === "[") this.fail("Nested bracket selectors are not supported");
-      if (this.peek() !== ",") this.fail("Expected ',' or ']' in bracket selector");
+      if (this.atEnd()) {
+        if (terminator) this.fail("Unclosed bracket selector");
+        return clauses;
+      }
+      if (this.peek() !== ",") {
+        this.fail(terminator ? "Expected ',' or ']' in bracket selector" : "Expected ',' between filter clauses");
+      }
 
       this.position += 1;
       this.skipWhitespace();
-      if (this.peek() === "]" || this.atEnd()) {
-        this.fail("Expected a property name after ','");
+      if (this.atEnd() || (terminator && this.peek() === terminator)) {
+        this.fail("Expected a filter clause after ','");
       }
     }
 
-    this.fail("Unclosed bracket selector");
+    this.fail(terminator ? "Unclosed bracket selector" : "Expected a filter clause");
+  }
+
+  private parseClause(): FilterClause {
+    const name = this.parseName();
+    this.skipWhitespace();
+
+    if (this.peek() !== "[") return { type: "plain", name };
+
+    this.position += 1;
+    this.skipWhitespace();
+    if (this.peek() === "]") this.fail("Bracket selectors must contain at least one clause");
+    if (this.atEnd()) this.fail("Unclosed bracket selector");
+
+    return { type: "bracket", name, children: this.parseClauseList("]") };
   }
 
   private parseName(): string {
@@ -202,41 +195,34 @@ function matchesNamePattern(name: string, pattern: NamePattern): boolean {
   return pattern.endsWithWildcard || normalized.endsWith(segments.at(-1) ?? "");
 }
 
-function matchesAnyPattern(name: string, patterns?: readonly NamePattern[]): boolean {
-  return patterns?.some((pattern) => matchesNamePattern(name, pattern)) ?? false;
-}
-
 function isObject(value: JsonValue): value is { [key: string]: JsonValue } {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
 export function filterJson(value: JsonValue, clauses: FilterClause[]): FilterResult {
-  const plainPatterns: NamePattern[] = [];
-  const bracketPatterns: Array<{ parent: NamePattern; children: NamePattern[] }> = [];
-
-  for (const clause of clauses) {
-    if (clause.type === "plain") {
-      plainPatterns.push(compileNamePattern(clause.name));
-      continue;
-    }
-
-    bracketPatterns.push({
-      parent: compileNamePattern(clause.name),
-      children: clause.children.map(compileNamePattern),
-    });
+  interface CompiledClause {
+    type: FilterClause["type"];
+    pattern: NamePattern;
+    recursive: boolean;
+    children?: CompiledClause[];
   }
 
-  function directPatternsFor(name: string): NamePattern[] {
-    return bracketPatterns.flatMap((clause) =>
-      matchesNamePattern(name, clause.parent) ? clause.children : [],
-    );
+  function compileClause(clause: FilterClause): CompiledClause {
+    return {
+      type: clause.type,
+      pattern: compileNamePattern(clause.name),
+      recursive: clause.type === "bracket" && clause.name === "*",
+      children: clause.type === "bracket" ? clause.children.map(compileClause) : undefined,
+    };
   }
 
-  function visit(current: JsonValue, directPatterns?: readonly NamePattern[]): FilterResult {
+  const globalClauses = clauses.map(compileClause);
+
+  function visit(current: JsonValue, directClauses?: readonly CompiledClause[]): FilterResult {
     if (Array.isArray(current)) {
       const result: JsonValue[] = [];
       for (const item of current) {
-        const filtered = visit(item, isObject(item) ? directPatterns : undefined);
+        const filtered = visit(item, directClauses);
         if (filtered.matched) result.push(filtered.value);
       }
       return { matched: result.length > 0, value: result };
@@ -248,15 +234,23 @@ export function filterJson(value: JsonValue, clauses: FilterClause[]): FilterRes
     let matched = false;
 
     for (const [key, child] of Object.entries(current)) {
-      if (matchesAnyPattern(key, plainPatterns) || matchesAnyPattern(key, directPatterns)) {
+      const matchingGlobalClauses = globalClauses.filter((clause) =>
+        matchesNamePattern(key, clause.pattern),
+      );
+      const matchingDirectClauses =
+        directClauses?.filter((clause) => matchesNamePattern(key, clause.pattern)) ?? [];
+      const matchingClauses = [...matchingGlobalClauses, ...matchingDirectClauses];
+
+      if (matchingClauses.some((clause) => clause.type === "plain")) {
         result[key] = child;
         matched = true;
         continue;
       }
 
-      const childDirectNames =
-        isObject(child) || Array.isArray(child) ? directPatternsFor(key) : undefined;
-      const filtered = visit(child, childDirectNames);
+      const childClauses = matchingClauses.flatMap((clause) => clause.children ?? []);
+      const recursiveClauses = matchingDirectClauses.filter((clause) => clause.recursive);
+      const nextDirectClauses = [...childClauses, ...recursiveClauses];
+      const filtered = visit(child, nextDirectClauses.length > 0 ? nextDirectClauses : undefined);
       if (filtered.matched) {
         result[key] = filtered.value;
         matched = true;

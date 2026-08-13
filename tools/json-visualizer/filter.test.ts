@@ -14,19 +14,63 @@ describe("parseFilter", () => {
   it("parses mixed plain and bracket clauses", () => {
     expect(parseFilter(' a, z[b, c], "x,y"["c[d]", Name] ')).toEqual([
       { type: "plain", name: "a" },
-      { type: "bracket", name: "z", children: ["b", "c"] },
-      { type: "bracket", name: "x,y", children: ["c[d]", "Name"] },
+      {
+        type: "bracket",
+        name: "z",
+        children: [
+          { type: "plain", name: "b" },
+          { type: "plain", name: "c" },
+        ],
+      },
+      {
+        type: "bracket",
+        name: "x,y",
+        children: [
+          { type: "plain", name: "c[d]" },
+          { type: "plain", name: "Name" },
+        ],
+      },
     ]);
   });
 
   it("supports JSON escapes and quoted empty property names", () => {
     expect(parseFilter('"line\\nname", root[""]')).toEqual([
       { type: "plain", name: "line\nname" },
-      { type: "bracket", name: "root", children: [""] },
+      { type: "bracket", name: "root", children: [{ type: "plain", name: "" }] },
     ]);
   });
 
-  it.each(["a,", "a[]", "a[b,]", "a[b", "a[[b]]", '"open', 'a"b']) (
+  it("parses arbitrarily nested clauses", () => {
+    expect(parseFilter("A[B[C,D],E[F[G]]]")).toEqual([
+      {
+        type: "bracket",
+        name: "A",
+        children: [
+          {
+            type: "bracket",
+            name: "B",
+            children: [
+              { type: "plain", name: "C" },
+              { type: "plain", name: "D" },
+            ],
+          },
+          {
+            type: "bracket",
+            name: "E",
+            children: [
+              {
+                type: "bracket",
+                name: "F",
+                children: [{ type: "plain", name: "G" }],
+              },
+            ],
+          },
+        ],
+      },
+    ]);
+  });
+
+  it.each(["a,", "a[]", "a[b,]", "a[b", "a[[b]]", "a[b]]", '"open', 'a"b']) (
     "rejects malformed expression %s",
     (expression) => expect(() => parseFilter(expression)).toThrow(FilterSyntaxError),
   );
@@ -159,6 +203,73 @@ describe("filterJson", () => {
     expect(filterJson(input, parseFilter("x[a],arrayParent[a]")).value).toEqual({
       x: { a: { complete: true } },
       arrayParent: [{ a: 2 }],
+    });
+  });
+
+  it("applies arbitrarily nested selectors to direct children at each level", () => {
+    const input: JsonValue = {
+      Content: { Title: "Root" },
+      Stages: [
+        {
+          Content: { Title: "Submission", Summary: "Ignored" },
+          FollowUps: [
+            { Content: { Title: "Rate Idea", Summary: "Ignored" }, ignored: true },
+            { Content: { Title: "Close Idea" } },
+          ],
+        },
+      ],
+    };
+
+    expect(filterJson(input, parseFilter("FollowUps[Content[Title]]")).value).toEqual({
+      Stages: [
+        {
+          FollowUps: [
+            { Content: { Title: "Rate Idea" } },
+            { Content: { Title: "Close Idea" } },
+          ],
+        },
+      ],
+    });
+  });
+
+  it("supports wildcard patterns at every nested level", () => {
+    const input: JsonValue = {
+      stagesPrimary: [{ followUpsActive: [{ CONTENT: { TitleLong: "Keep", ignored: true } }] }],
+      stagesArchive: [{ followUpsActive: [{ other: true }] }],
+    };
+
+    expect(filterJson(input, parseFilter("stages*[follow*[content[title*]]]")).value).toEqual({
+      stagesPrimary: [{ followUpsActive: [{ CONTENT: { TitleLong: "Keep" } }] }],
+    });
+  });
+
+  it("uses a nested standalone wildcard to cross any descendant depth", () => {
+    const input: JsonValue = {
+      Stages: [
+        {
+          Content: { Title: "Stage title" },
+          DirectBranch: { Content: { Title: "Direct match", ignored: true } },
+          DeepBranch: {
+            Layer: {
+              FollowUps: [{ Content: { Title: "Deep match", ignored: true }, ignored: true }],
+            },
+          },
+          UnmatchedBranch: { Content: { Summary: "No title" } },
+        },
+      ],
+    };
+
+    expect(filterJson(input, parseFilter("Stages[*[Content[Title]]]")).value).toEqual({
+      Stages: [
+        {
+          DirectBranch: { Content: { Title: "Direct match" } },
+          DeepBranch: {
+            Layer: {
+              FollowUps: [{ Content: { Title: "Deep match" } }],
+            },
+          },
+        },
+      ],
     });
   });
 
