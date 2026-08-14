@@ -663,4 +663,34 @@ describe("JsonVisualizer", () => {
     expect(sourceInput).toBeVisible();
     expect(sourceInput).toHaveValue('{"kept":true}');
   });
+
+  it("renders source and output actions as icon buttons with text tooltips", () => {
+    render(<JsonVisualizer />);
+
+    for (const label of [
+      "Collapse input",
+      "Paste content",
+      "Load JSON file",
+      "Apply formatting",
+      "Copy JSON",
+      "Collapse header",
+    ]) {
+      const button = screen.getByRole("button", { name: label });
+      expect(button).toHaveAttribute("title", label);
+      expect(button).toHaveTextContent("");
+      expect(button.querySelector("svg")).not.toBeNull();
+    }
+  });
+
+  it("places filter guidance in a tooltip beside the filter label", () => {
+    render(<JsonVisualizer />);
+
+    const helpButton = screen.getByRole("button", { name: "Filter expression help" });
+    const tooltip = screen.getByRole("tooltip");
+    expect(helpButton.parentElement?.previousElementSibling).toHaveTextContent(
+      "Filter expression",
+    );
+    expect(helpButton).toHaveAttribute("aria-describedby", tooltip.id);
+    expect(tooltip).toHaveTextContent("Use a,b for keys anywhere");
+  });
 });

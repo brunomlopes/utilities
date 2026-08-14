@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
-import { JsonVisualizer } from "@/tools/json-visualizer/json-visualizer";
-import { JsonVisualizerHeader } from "@/tools/json-visualizer/json-visualizer-header";
+import { JsonVisualizerTool } from "@/tools/json-visualizer/json-visualizer-tool";
 
 export const metadata: Metadata = {
   title: "JSON Visualizer",
@@ -10,8 +9,7 @@ export const metadata: Metadata = {
 export default function JsonVisualizerPage() {
   return (
     <main className="tool-shell">
-      <JsonVisualizerHeader />
-      <JsonVisualizer />
+      <JsonVisualizerTool />
     </main>
   );
 }

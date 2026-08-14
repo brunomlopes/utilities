@@ -13,6 +13,7 @@ import {
 } from "react";
 import { formatCompactJson } from "./compact-format";
 import { filterJson, FilterSyntaxError, parseFilter, type JsonValue } from "./filter";
+import { IconButton } from "./icon-button";
 import { createTableModel } from "./table-model";
 import { getSortedRowIndices, type SortDirection } from "./table-sort";
 
@@ -78,7 +79,15 @@ function evaluate(jsonText: string, filterText: string): Evaluation {
   };
 }
 
-export function JsonVisualizer() {
+interface JsonVisualizerProps {
+  isHeaderCollapsed?: boolean;
+  onHeaderCollapsedChange?: (isCollapsed: boolean) => void;
+}
+
+export function JsonVisualizer({
+  isHeaderCollapsed = false,
+  onHeaderCollapsedChange = () => undefined,
+}: JsonVisualizerProps = {}) {
   const jsonErrorId = useId();
   const filterHelpId = useId();
   const filterErrorId = useId();
@@ -364,17 +373,15 @@ export function JsonVisualizer() {
       aria-label="JSON filtering workspace"
     >
       <div className={`pane input-pane ${isInputCollapsed ? "is-collapsed" : ""}`}>
-        <button
-          type="button"
+        <IconButton
+          icon="chevron-right"
+          label="Expand input"
           className="collapsed-input-button"
           aria-expanded={!isInputCollapsed}
           aria-controls={inputPaneContentId}
           hidden={!isInputCollapsed}
           onClick={() => setIsInputCollapsed(false)}
-        >
-          <span aria-hidden="true">›</span>
-          <span>Expand input</span>
-        </button>
+        />
         <div
           id={inputPaneContentId}
           className="input-pane-content"
@@ -386,39 +393,41 @@ export function JsonVisualizer() {
             <h2>Source JSON</h2>
           </div>
           <div className="source-actions">
-            <button
-              type="button"
+            <IconButton
+              icon="chevron-left"
+              label="Collapse input"
               className="pane-toggle-button"
               aria-expanded={!isInputCollapsed}
               aria-controls={inputPaneContentId}
               onClick={() => setIsInputCollapsed(true)}
-            >
-              <span aria-hidden="true">‹</span>
-              Collapse input
-            </button>
-            <button
-              type="button"
+            />
+            <IconButton
+              icon="clipboard"
+              label={isReadingClipboard ? "Pasting content" : "Paste content"}
               className="paste-button"
               onClick={pasteClipboardContent}
               disabled={isReadingClipboard}
-            >
-              {isReadingClipboard ? "Pasting…" : "Paste content"}
-            </button>
-            <button
-              type="button"
+            />
+            <IconButton
+              icon="file"
+              label="Load JSON file"
               className="load-button"
               onClick={() => fileInputRef.current?.click()}
-            >
-              Load JSON file
-            </button>
-            <button
-              type="button"
+            />
+            <IconButton
+              icon="format"
+              label={showingFormattedPaste ? "Revert formatting" : "Apply formatting"}
               className="format-button"
               onClick={togglePasteFormatting}
               disabled={!pasteVersions}
-            >
-              {showingFormattedPaste ? "Revert formatting" : "Apply formatting"}
-            </button>
+            />
+            <IconButton
+              icon={isHeaderCollapsed ? "header-expand" : "header-collapse"}
+              label={isHeaderCollapsed ? "Expand header" : "Collapse header"}
+              className="header-toggle-button"
+              aria-expanded={!isHeaderCollapsed}
+              onClick={() => onHeaderCollapsedChange(!isHeaderCollapsed)}
+            />
             <span className="privacy-badge">Local only</span>
           </div>
           </div>
@@ -462,10 +471,27 @@ export function JsonVisualizer() {
 
       <div className="pane result-pane">
         <div className="filter-block">
-          <label htmlFor="filter-input">
-            <span className="step-number">02</span>
-            Filter expression
-          </label>
+          <div className="filter-label-row">
+            <label htmlFor="filter-input">
+              <span className="step-number">02</span>
+              Filter expression
+            </label>
+            <span className="help-tooltip-wrapper">
+              <button
+                type="button"
+                className="help-tooltip-button"
+                aria-label="Filter expression help"
+                aria-describedby={filterHelpId}
+              >
+                ?
+              </button>
+              <span id={filterHelpId} className="filter-help-tooltip" role="tooltip">
+                Use a,b for keys anywhere or x[a,b] for direct children, including items in an x
+                array. Nest brackets for deeper direct children, or use *[...] to search descendant
+                levels recursively. Filter values with x[id,status=active].
+              </span>
+            </span>
+          </div>
           <textarea
             ref={filterInputRef}
             id="filter-input"
@@ -483,12 +509,6 @@ export function JsonVisualizer() {
             aria-invalid={Boolean(evaluation.filterError)}
             aria-describedby={filterDescribedBy}
           />
-          <p id={filterHelpId} className="filter-help">
-            Use <code>a,b</code> for keys anywhere or <code>x[a,b]</code> for direct children,
-            including items in an <code>x</code> array. Nest brackets for deeper direct children, or
-            use <code>*[...]</code> to search descendant levels recursively. Filter values with
-            <code>x[id,status=active]</code>.
-          </p>
           <p
             id={filterErrorId}
             className={`field-message error-message ${evaluation.filterError ? "" : "is-hidden"}`}
@@ -515,14 +535,13 @@ export function JsonVisualizer() {
               />
               Compact output
             </label>
-            <button
-              type="button"
+            <IconButton
+              icon="copy"
+              label="Copy JSON"
               className="copy-button"
               onClick={copyOutput}
               disabled={!output}
-            >
-              Copy JSON
-            </button>
+            />
           </div>
         </div>
         <div className="output-tabs" role="tablist" aria-label="Filtered output views">
