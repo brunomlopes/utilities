@@ -53,6 +53,9 @@ This table contains as headers the subproperties of objects found on the array, 
 - UI.8 On the output section, there is a checkbox, set by default, named "Compact output". When this checkbox is set, the output is formatted in a compact way, where an object with just one item or property is rendered in the same line. See Example 6.
 - UI.9 On the input side of the ui, there is a button to colapse the input side, which expands the filter + output side
 - UI.10 On the header, there is a button to colapse the header so that the input + output boxes take up more of the screen
+- UI.11 Buttons for collapse input, paste content, load json file, revert formatting, copy json and collapse/expand header should all be icons with text as the tooltip.
+- UI.12 Collapse/expand header button should be next to the other collapse input, paste content, etc buttons.
+- UI.13 The help text for filter expression should be as a tooltip for a question mark icon near "FILTER EXPRESSION"
 
 
 ### Examples

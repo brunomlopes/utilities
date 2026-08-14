@@ -10,4 +10,5 @@
 
 ## Agent behaviour
 
-Alwayas ask any questions regarding the work to be done and wait for an answer. Do not assume or timeout.
+- Always ask any questions regarding the work to be done and wait for an answer. Do not assume or timeout.
+- When an implementation is done, commit it.
