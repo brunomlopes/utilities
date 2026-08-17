@@ -331,6 +331,20 @@ describe("JsonVisualizer", () => {
     ]);
   });
 
+  it("renders a multi-item root object array as a table", () => {
+    render(<JsonVisualizer />);
+    update(JSON.stringify([{ id: 1 }, { id: 2 }]), "");
+    act(() => vi.advanceTimersByTime(250));
+
+    fireEvent.click(screen.getByRole("tab", { name: "Table" }));
+
+    expect(
+      screen.getAllByRole("row").map((row) =>
+        Array.from(row.querySelectorAll("th, td"), (cell) => cell.textContent),
+      ),
+    ).toEqual([["id"], ["1"], ["2"]]);
+  });
+
   it("cycles a column through ascending, descending, and original order", () => {
     render(<JsonVisualizer />);
     update(
@@ -544,7 +558,7 @@ describe("JsonVisualizer", () => {
 
   it.each([
     ["a primitive-only result", '{"values":[1,2,3]}'],
-    ["a root array", '[{"id":1}]'],
+    ["a singleton root array", '[{"id":1}]'],
     ["a scalar root", '"text"'],
   ])("shows the table empty state for %s", (_description, json) => {
     render(<JsonVisualizer />);

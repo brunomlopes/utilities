@@ -10,6 +10,45 @@ function createDisplayTable(value: JsonValue) {
 }
 
 describe("createTableModel", () => {
+  it("uses a multi-item root object array as the table", () => {
+    const value: JsonValue = [
+      { id: 1, name: "first" },
+      { id: 2, name: "second" },
+    ];
+
+    expect(createDisplayTable(value)).toEqual({
+      columns: ["id", "name"],
+      rows: [
+        ["1", "first"],
+        ["2", "second"],
+      ],
+    });
+  });
+
+  it("prefers a multi-item root array over arrays nested in its rows", () => {
+    const value: JsonValue = [
+      { id: 1, nested: [{ ignored: "a" }, { ignored: "b" }] },
+      { id: 2, nested: [{ ignored: "c" }, { ignored: "d" }] },
+    ];
+
+    expect(createDisplayTable(value)).toEqual({
+      columns: ["id", "nested"],
+      rows: [
+        ["1", '[{"ignored":"a"},{"ignored":"b"}]'],
+        ["2", '[{"ignored":"c"},{"ignored":"d"}]'],
+      ],
+    });
+  });
+
+  it("ignores primitive members in a mixed multi-item root array", () => {
+    const value: JsonValue = ["ignored", { id: 7 }, null];
+
+    expect(createDisplayTable(value)).toEqual({
+      columns: ["id"],
+      rows: [["7"]],
+    });
+  });
+
   it("builds the table from specification example 3", () => {
     const value: JsonValue = {
       pagedResults: {
@@ -222,6 +261,7 @@ describe("createTableModel", () => {
   it.each<JsonValue>([
     { primitiveValues: [1, 2, 3] },
     [],
+    [1, 2],
     [{ id: 1 }],
     "text",
     42,

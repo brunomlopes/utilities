@@ -56,6 +56,20 @@ This table contains as headers the subproperties of objects found on the array, 
 - UI.11 Buttons for collapse input, paste content, load json file, revert formatting, copy json and collapse/expand header should all be icons with text as the tooltip.
 - UI.12 Collapse/expand header button should be next to the other collapse input, paste content, etc buttons.
 - UI.13 The help text for filter expression should be as a tooltip for a question mark icon near "FILTER EXPRESSION"
+- UI.14 When rendering a table, if the root object is an array with more than one item, use the root object as the array for the table
+
+### Table rendering rules
+
+- The table is built from the filtered JSON output, not directly from the source input.
+- A root array with more than one item takes precedence when it contains at least one object. Its object items become rows and any primitive items are ignored. A primitive-only or singleton root array does not produce a table.
+- Otherwise, starting from a root object, object properties are searched breadth-first for the first array containing at least one object. Properties and branches at the same depth are considered in JSON insertion order. Primitive-only arrays are skipped.
+- When the selected array has exactly one total item, the same breadth-first search is repeated inside its sole object row. This continues through consecutive singleton arrays until an array with more than one item is found or the last eligible array is reached. The search stays inside the initially selected branch.
+- Table columns are the union of the object rows' properties. Parent properties and flattened child properties appear in the order they are first encountered across the rows.
+- A property is flattened by one level when every present, non-null value for that property is a non-empty object whose direct children are all primitives. Its columns use `parent.child` labels. Missing and null parent values do not prevent flattening and render blank; nested objects are not flattened recursively.
+- Missing properties render as blank cells. Strings render without quotes, other primitives render as their text, and arrays or non-flattened objects render as compact JSON. A present `null` value renders as `null` unless it is the missing/null parent of a flattened property.
+- Literal dotted property names and dotted labels produced by flattening remain distinct columns internally, even when their displayed labels are identical.
+- Sorting is limited to one column and cycles from original order to ascending, descending, and back to original order. Numbers sort numerically, strings case-insensitively, booleans with `false` before `true`, and mixed-type or complex columns by displayed text. Equal values retain their original order; missing and empty-string values remain last in both directions, while `null` is treated as populated.
+- If no eligible object array exists, the table shows the no-object-array empty state. If an eligible array's object rows have no properties, it shows the no-properties empty state.
 
 
 ### Examples

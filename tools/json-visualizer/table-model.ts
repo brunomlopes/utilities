@@ -72,7 +72,16 @@ function findFirstObjectArray(value: JsonObject): ObjectArrayCandidate | null {
   return null;
 }
 
-function findPreferredObjectArray(value: JsonObject): JsonObject[] | null {
+function findPreferredObjectArray(value: JsonValue): JsonObject[] | null {
+  if (Array.isArray(value)) {
+    if (value.length <= 1) return null;
+
+    const rows = value.filter(isJsonObject);
+    return rows.length > 0 ? rows : null;
+  }
+
+  if (!isJsonObject(value)) return null;
+
   let candidate = findFirstObjectArray(value);
 
   while (candidate?.items.length === 1) {
@@ -152,8 +161,6 @@ function createColumnKey(column: TableColumn): string {
 }
 
 export function createTableModel(value: JsonValue | null): TableModel | null {
-  if (!isJsonObject(value)) return null;
-
   const objectRows = findPreferredObjectArray(value);
   if (!objectRows) return null;
 
