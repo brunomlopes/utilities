@@ -18,7 +18,16 @@ export interface EqualityFilterClause {
   expectedValue: string;
 }
 
-export type FilterClause = PlainFilterClause | BracketFilterClause | EqualityFilterClause;
+export interface RootFilterClause {
+  type: "root";
+  children: FilterClause[];
+}
+
+export type FilterClause =
+  | PlainFilterClause
+  | BracketFilterClause
+  | EqualityFilterClause
+  | RootFilterClause;
 
 export interface FilterResult {
   matched: boolean;
@@ -46,7 +55,7 @@ class FilterParser {
     const clauses: FilterClause[] = [];
 
     while (!this.atEnd()) {
-      clauses.push(this.parseClause());
+      clauses.push(this.parseClause(terminator === undefined));
       this.skipWhitespace();
 
       if (terminator && this.peek() === terminator) {
@@ -71,7 +80,8 @@ class FilterParser {
     this.fail(terminator ? "Unclosed bracket selector" : "Expected a filter clause");
   }
 
-  private parseClause(): FilterClause {
+  private parseClause(allowRoot: boolean): FilterClause {
+    const startsWithQuote = this.peek() === '"';
     const name = this.parseName();
     this.skipWhitespace();
 
@@ -86,6 +96,11 @@ class FilterParser {
     this.skipWhitespace();
     if (this.peek() === "]") this.fail("Bracket selectors must contain at least one clause");
     if (this.atEnd()) this.fail("Unclosed bracket selector");
+
+    if (name === "$" && !startsWithQuote) {
+      if (!allowRoot) this.fail("The root selector is only allowed at the top level");
+      return { type: "root", children: this.parseClauseList("]") };
+    }
 
     return { type: "bracket", name, children: this.parseClauseList("]") };
   }
@@ -234,7 +249,7 @@ function isObject(value: JsonValue): value is { [key: string]: JsonValue } {
 
 export function filterJson(value: JsonValue, clauses: FilterClause[]): FilterResult {
   interface CompiledClause {
-    type: FilterClause["type"];
+    type: Exclude<FilterClause["type"], "root">;
     pattern: NamePattern;
     recursive: boolean;
     expectedValue?: string;
@@ -242,6 +257,10 @@ export function filterJson(value: JsonValue, clauses: FilterClause[]): FilterRes
   }
 
   function compileClause(clause: FilterClause): CompiledClause {
+    if (clause.type === "root") {
+      throw new Error("Root selectors cannot be nested");
+    }
+
     return {
       type: clause.type,
       pattern: compileNamePattern(clause.name),
@@ -251,7 +270,10 @@ export function filterJson(value: JsonValue, clauses: FilterClause[]): FilterRes
     };
   }
 
-  const globalClauses = clauses.map(compileClause);
+  const globalClauses = clauses.filter((clause) => clause.type !== "root").map(compileClause);
+  const rootClauses = clauses
+    .filter((clause): clause is RootFilterClause => clause.type === "root")
+    .flatMap((clause) => clause.children.map(compileClause));
 
   function visit(current: JsonValue, directClauses?: readonly CompiledClause[]): FilterResult {
     if (Array.isArray(current)) {
@@ -347,5 +369,9 @@ export function filterJson(value: JsonValue, clauses: FilterClause[]): FilterRes
   }
 
   if (clauses.length === 0) return { matched: true, value };
-  return visit(value);
+  if (Array.isArray(value)) {
+    if (globalClauses.length === 0) return { matched: false, value: [] };
+    return visit(value);
+  }
+  return visit(value, rootClauses.length > 0 ? rootClauses : undefined);
 }

@@ -85,6 +85,38 @@ describe("parseFilter", () => {
     ]);
   });
 
+  it("parses a root selector as a distinct top-level clause", () => {
+    expect(parseFilter("$[FollowUps[Content[Title]]],id")).toEqual([
+      {
+        type: "root",
+        children: [
+          {
+            type: "bracket",
+            name: "FollowUps",
+            children: [
+              {
+                type: "bracket",
+                name: "Content",
+                children: [{ type: "plain", name: "Title" }],
+              },
+            ],
+          },
+        ],
+      },
+      { type: "plain", name: "id" },
+    ]);
+  });
+
+  it("treats a quoted dollar sign as an ordinary property name", () => {
+    expect(parseFilter('"$"[value]')).toEqual([
+      {
+        type: "bracket",
+        name: "$",
+        children: [{ type: "plain", name: "value" }],
+      },
+    ]);
+  });
+
   it.each([
     "a,",
     "a[]",
@@ -97,6 +129,7 @@ describe("parseFilter", () => {
     "a=",
     "a=[]",
     'a="open',
+    "outer[$[value]]",
   ]) (
     "rejects malformed expression %s",
     (expression) => expect(() => parseFilter(expression)).toThrow(FilterSyntaxError),
@@ -297,6 +330,50 @@ describe("filterJson", () => {
           },
         },
       ],
+    });
+  });
+
+  it("anchors a dollar selector to properties on the root object", () => {
+    const input: JsonValue = {
+      FollowUps: [{ id: "root", ignored: true }],
+      nested: {
+        FollowUps: [{ id: "nested", ignored: true }],
+      },
+    };
+
+    expect(filterJson(input, parseFilter("$[FollowUps]")).value).toEqual({
+      FollowUps: [{ id: "root", ignored: true }],
+    });
+    expect(filterJson(input, parseFilter("$[FollowUps[id]]")).value).toEqual({
+      FollowUps: [{ id: "root" }],
+    });
+  });
+
+  it("does not apply a root selector to items in a root array", () => {
+    const input: JsonValue = [
+      { FollowUps: [{ id: 1 }] },
+      { FollowUps: [{ id: 2 }] },
+    ];
+
+    expect(filterJson(input, parseFilter("$[FollowUps]"))).toEqual({
+      matched: false,
+      value: [],
+    });
+    expect(filterJson(input, parseFilter("$[FollowUps],id")).value).toEqual([
+      { FollowUps: [{ id: 1 }] },
+      { FollowUps: [{ id: 2 }] },
+    ]);
+  });
+
+  it("unions root-anchored and ordinary global selectors", () => {
+    const input: JsonValue = {
+      FollowUps: [{ id: "root" }],
+      nested: { FollowUps: [{ id: "nested" }], title: "Keep" },
+    };
+
+    expect(filterJson(input, parseFilter("$[FollowUps],title")).value).toEqual({
+      FollowUps: [{ id: "root" }],
+      nested: { title: "Keep" },
     });
   });
 

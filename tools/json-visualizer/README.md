@@ -8,6 +8,7 @@ A browser-only utility for pruning JSON documents by property name. It is part o
 - `x[a,b,c]` finds `x` properties anywhere and keeps matching direct children. When `x` is an array, the child filter is applied to every object item and unmatched items are removed.
 - Brackets can be nested to any depth. Each ordinary nested selector matches only direct children, as in `FollowUps[Content[Title]]`.
 - A nested standalone wildcard crosses descendant levels recursively. For example, `Stages[*[Content[Title]]]` finds matching `Content.Title` branches at any depth beneath each property in `Stages`.
+- `$[FollowUps]` anchors the selector to the root object, so nested properties named `FollowUps` are not matched. A root array is not treated as a collection of root objects.
 - `x[status=active]` keeps only `x` objects whose `status` is `active`, retaining their other properties but omitting the predicate-only `status` property. Add selectors such as `x[id,status=active]` to project only those properties from matching objects.
 - Add a plain selector to project a predicate property: `x[status,status=active]` keeps and shows `status`.
 - Repeating predicates uses OR logic: `x[status,status=active,status=paused]` keeps items with either value.

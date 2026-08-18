@@ -16,6 +16,7 @@ The filter to apply is described as follows:
 - Filter 7. x[a,a=42,a=27] can be used to show property a, and filter by either a=42 or a=27
 - Filter 8. Nested filters should work. FollowUps[Content[Title]] should filter according to example 7
 - Filter 9. Nested selectors match direct children, while a nested standalone `*` crosses any number of descendant levels recursively. For example, `Stages[*[Content[Title]]]` filters according to example 8.
+- Filter 10. A dollar sign should represent the root, so that $[Followups] should only match property Followups on the root object, and not any sub-properties named Followups
 
 Filters 5–7 compare scalar values by their text. Bare values support strings without spaces,
 numbers, booleans, and `null`; JSON-quoted values support spaces and escapes. Consequently,
