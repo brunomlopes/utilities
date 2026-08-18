@@ -345,6 +345,109 @@ describe("JsonVisualizer", () => {
     ).toEqual([["id"], ["1"], ["2"]]);
   });
 
+  it("renders array cells as subtables with synchronized, independent sorting", () => {
+    render(<JsonVisualizer />);
+    update(
+      JSON.stringify({
+        records: [
+          {
+            name: "Beta",
+            items: [
+              { id: 2, label: "second" },
+              { id: 1, label: "first" },
+            ],
+          },
+          {
+            name: "alpha",
+            items: [
+              { id: 4, label: "fourth" },
+              { id: 3, label: "third" },
+            ],
+          },
+        ],
+      }),
+      "",
+    );
+    act(() => vi.advanceTimersByTime(250));
+    fireEvent.click(screen.getByRole("tab", { name: "Table" }));
+
+    const subtables = screen.getAllByRole("table", { name: "items subtable" });
+    const subtableIds = () =>
+      subtables.map((table) =>
+        Array.from(
+          table.querySelectorAll<HTMLTableRowElement>("tbody > tr"),
+          (row) => row.cells[0].textContent,
+        ),
+      );
+
+    expect(subtables).toHaveLength(2);
+    expect(subtableIds()).toEqual([
+      ["2", "1"],
+      ["4", "3"],
+    ]);
+
+    const nestedIdSortButtons = screen.getAllByRole("button", { name: "id" });
+    fireEvent.click(nestedIdSortButtons[0]);
+
+    expect(subtableIds()).toEqual([
+      ["1", "2"],
+      ["3", "4"],
+    ]);
+    for (const button of nestedIdSortButtons) {
+      expect(button.closest("th")).toHaveAttribute("aria-sort", "ascending");
+    }
+
+    fireEvent.click(screen.getByRole("button", { name: "name" }));
+    expect(screen.getByRole("columnheader", { name: "name" })).toHaveAttribute(
+      "aria-sort",
+      "ascending",
+    );
+    for (const button of nestedIdSortButtons) {
+      expect(button.closest("th")).toHaveAttribute("aria-sort", "ascending");
+    }
+
+    fireEvent.click(nestedIdSortButtons[1]);
+    expect(subtableIds()).toEqual([
+      ["2", "1"],
+      ["4", "3"],
+    ]);
+    for (const button of nestedIdSortButtons) {
+      expect(button.closest("th")).toHaveAttribute("aria-sort", "descending");
+    }
+    expect(screen.getByRole("columnheader", { name: "name" })).toHaveAttribute(
+      "aria-sort",
+      "ascending",
+    );
+  });
+
+  it("renders eligible array cells recursively", () => {
+    render(<JsonVisualizer />);
+    update(
+      JSON.stringify({
+        records: [
+          {
+            groups: [
+              { name: "one", entries: [{ value: 1 }, { value: 2 }] },
+              { name: "two", entries: [{ value: 3 }, { value: 4 }] },
+            ],
+          },
+          {
+            groups: [
+              { name: "three", entries: [{ value: 5 }, { value: 6 }] },
+              { name: "four", entries: [{ value: 7 }, { value: 8 }] },
+            ],
+          },
+        ],
+      }),
+      "",
+    );
+    act(() => vi.advanceTimersByTime(250));
+    fireEvent.click(screen.getByRole("tab", { name: "Table" }));
+
+    expect(screen.getAllByRole("table", { name: "groups subtable" })).toHaveLength(2);
+    expect(screen.getAllByRole("table", { name: "entries subtable" })).toHaveLength(4);
+  });
+
   it("cycles a column through ascending, descending, and original order", () => {
     render(<JsonVisualizer />);
     update(

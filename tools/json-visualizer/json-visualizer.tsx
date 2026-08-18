@@ -44,6 +44,148 @@ interface SortState {
   direction: SortDirection;
 }
 
+type SortStates = Record<string, SortState | undefined>;
+
+const ROOT_TABLE_SCOPE = "root";
+
+function getNextSortState(
+  current: SortState | undefined,
+  columnKey: string,
+): SortState | undefined {
+  if (!current || current.columnKey !== columnKey) {
+    return { columnKey, direction: "ascending" };
+  }
+
+  if (current.direction === "ascending") {
+    return { columnKey, direction: "descending" };
+  }
+
+  return undefined;
+}
+
+interface JsonTableProps {
+  model: NonNullable<ReturnType<typeof createTableModel>>;
+  scope: string;
+  sortStates: SortStates;
+  onToggleSort: (scope: string, columnKey: string) => void;
+  nested?: boolean;
+  label?: string;
+}
+
+function JsonTable({
+  model,
+  scope,
+  sortStates,
+  onToggleSort,
+  nested = false,
+  label,
+}: JsonTableProps) {
+  const configuredSort = sortStates[scope];
+  const activeSort =
+    configuredSort && model.columnKeys.includes(configuredSort.columnKey)
+      ? configuredSort
+      : undefined;
+  const sortedRowIndices = activeSort
+    ? getSortedRowIndices(model, activeSort.columnKey, activeSort.direction)
+    : model.rows.map((_, index) => index);
+
+  return (
+    <table
+      className={`result-table ${nested ? "nested-result-table" : ""}`}
+      aria-label={label}
+    >
+      <thead>
+        <tr>
+          {model.columns.map((column, columnIndex) => {
+            const columnKey = model.columnKeys[columnIndex];
+            const direction = activeSort?.columnKey === columnKey ? activeSort.direction : null;
+
+            return (
+              <th key={`${columnIndex}:${columnKey}`} scope="col" aria-sort={direction ?? "none"}>
+                <button
+                  type="button"
+                  className="sort-button"
+                  onClick={() => onToggleSort(scope, columnKey)}
+                >
+                  <span>{column}</span>
+                  {direction ? (
+                    <span className="sort-indicator" aria-hidden="true">
+                      {direction === "ascending" ? "↑" : "↓"}
+                    </span>
+                  ) : null}
+                </button>
+              </th>
+            );
+          })}
+        </tr>
+      </thead>
+      <tbody>
+        {sortedRowIndices.map((rowIndex) => (
+          <tr key={rowIndex}>
+            {model.rows[rowIndex].map((cell, columnIndex) => {
+              const value = model.sortValues[rowIndex][columnIndex];
+              const columnKey = model.columnKeys[columnIndex];
+              const nestedScope = JSON.stringify([scope, columnKey]);
+
+              return (
+                <td key={`${columnIndex}:${columnKey}`}>
+                  {Array.isArray(value) ? (
+                    <NestedTableCell
+                      value={value}
+                      fallback={cell}
+                      scope={nestedScope}
+                      label={`${model.columns[columnIndex]} subtable`}
+                      sortStates={sortStates}
+                      onToggleSort={onToggleSort}
+                    />
+                  ) : (
+                    cell
+                  )}
+                </td>
+              );
+            })}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+interface NestedTableCellProps {
+  value: JsonValue[];
+  fallback: string;
+  scope: string;
+  label: string;
+  sortStates: SortStates;
+  onToggleSort: (scope: string, columnKey: string) => void;
+}
+
+function NestedTableCell({
+  value,
+  fallback,
+  scope,
+  label,
+  sortStates,
+  onToggleSort,
+}: NestedTableCellProps) {
+  const model = useMemo(() => createTableModel(value), [value]);
+
+  if (!model || model.columns.length === 0) return fallback;
+
+  return (
+    <div className="nested-table-scroll">
+      <JsonTable
+        model={model}
+        scope={scope}
+        sortStates={sortStates}
+        onToggleSort={onToggleSort}
+        nested
+        label={label}
+      />
+    </div>
+  );
+}
+
 function evaluate(jsonText: string, filterText: string): Evaluation {
   let clauses;
   let filterError: string | null = null;
@@ -102,7 +244,7 @@ export function JsonVisualizer({
   const [compactOutput, setCompactOutput] = useState(true);
   const [outputMaximumColumns, setOutputMaximumColumns] = useState(Infinity);
   const [outputView, setOutputView] = useState<OutputView>("tree");
-  const [sortState, setSortState] = useState<SortState | null>(null);
+  const [sortStates, setSortStates] = useState<SortStates>({});
   const [copyStatus, setCopyStatus] = useState("");
   const [pasteVersions, setPasteVersions] = useState<PasteVersions | null>(null);
   const [showingFormattedPaste, setShowingFormattedPaste] = useState(false);
@@ -121,14 +263,6 @@ export function JsonVisualizer({
     () => createTableModel(evaluation.filteredValue),
     [evaluation.filteredValue],
   );
-  const activeSort =
-    sortState && tableModel?.columnKeys.includes(sortState.columnKey) ? sortState : null;
-  const sortedRowIndices = useMemo(() => {
-    if (!tableModel) return [];
-    if (!activeSort) return tableModel.rows.map((_, index) => index);
-
-    return getSortedRowIndices(tableModel, activeSort.columnKey, activeSort.direction);
-  }, [activeSort, tableModel]);
   const output = useMemo(() => {
     if (!evaluation.output || !compactOutput) return evaluation.output;
     return formatCompactJson(evaluation.filteredValue as JsonValue, outputMaximumColumns);
@@ -175,9 +309,14 @@ export function JsonVisualizer({
       const nextTableModel = createTableModel(nextEvaluation.filteredValue);
 
       setEvaluation(nextEvaluation);
-      setSortState((current) =>
-        current && !nextTableModel?.columnKeys.includes(current.columnKey) ? null : current,
-      );
+      setSortStates((current) => {
+        const rootSort = current[ROOT_TABLE_SCOPE];
+        if (!rootSort || nextTableModel?.columnKeys.includes(rootSort.columnKey)) return current;
+
+        const next = { ...current };
+        delete next[ROOT_TABLE_SCOPE];
+        return next;
+      });
       setCopyStatus("");
     }, DEBOUNCE_MS);
 
@@ -270,17 +409,15 @@ export function JsonVisualizer({
     selectOutputView(nextView, true);
   }
 
-  function toggleColumnSort(columnKey: string) {
-    setSortState((current) => {
-      if (!current || current.columnKey !== columnKey) {
-        return { columnKey, direction: "ascending" };
-      }
+  function toggleColumnSort(scope: string, columnKey: string) {
+    setSortStates((current) => {
+      const nextSort = getNextSortState(current[scope], columnKey);
+      const next = { ...current };
 
-      if (current.direction === "ascending") {
-        return { columnKey, direction: "descending" };
-      }
+      if (nextSort) next[scope] = nextSort;
+      else delete next[scope];
 
-      return null;
+      return next;
     });
   }
 
@@ -607,47 +744,12 @@ export function JsonVisualizer({
             <p className="table-empty">The first object array has no properties to display.</p>
           ) : (
             <div className="table-scroll">
-              <table className="result-table">
-                <thead>
-                  <tr>
-                    {tableModel.columns.map((column, columnIndex) => {
-                      const columnKey = tableModel.columnKeys[columnIndex];
-                      const direction =
-                        activeSort?.columnKey === columnKey ? activeSort.direction : null;
-
-                      return (
-                        <th
-                          key={`${columnIndex}:${columnKey}`}
-                          scope="col"
-                          aria-sort={direction ?? "none"}
-                        >
-                          <button
-                            type="button"
-                            className="sort-button"
-                            onClick={() => toggleColumnSort(columnKey)}
-                          >
-                            <span>{column}</span>
-                            {direction ? (
-                              <span className="sort-indicator" aria-hidden="true">
-                                {direction === "ascending" ? "↑" : "↓"}
-                              </span>
-                            ) : null}
-                          </button>
-                        </th>
-                      );
-                    })}
-                  </tr>
-                </thead>
-                <tbody>
-                  {sortedRowIndices.map((rowIndex) => (
-                    <tr key={rowIndex}>
-                      {tableModel.rows[rowIndex].map((cell, columnIndex) => (
-                        <td key={`${columnIndex}:${tableModel.columns[columnIndex]}`}>{cell}</td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <JsonTable
+                model={tableModel}
+                scope={ROOT_TABLE_SCOPE}
+                sortStates={sortStates}
+                onToggleSort={toggleColumnSort}
+              />
             </div>
           )}
         </div>

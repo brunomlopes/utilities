@@ -403,6 +403,37 @@
   background: rgb(23 78 71 / 3%);
 }
 
+.nested-table-scroll {
+  max-width: min(640px, 60vw);
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fffefa;
+}
+
+.nested-result-table {
+  font-size: 0.74rem;
+}
+
+.nested-result-table th {
+  position: static;
+  font-size: 0.68rem;
+}
+
+.nested-result-table th,
+.nested-result-table td {
+  max-width: 300px;
+  padding: 8px 10px;
+}
+
+.nested-result-table th {
+  padding: 0;
+}
+
+.nested-result-table .sort-button {
+  padding: 8px 10px;
+}
+
 .table-empty {
   margin: auto;
   padding: 32px;
