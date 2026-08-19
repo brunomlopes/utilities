@@ -23,6 +23,19 @@ describe("convertCell", () => {
     expect(convertCell("$-1\u00a0234.50", "en", "pt")).toBe("-1234,50");
   });
 
+  it("converts percentages to their decimal values", () => {
+    expect(convertCell("25%", "en", "pt")).toBe("0,25");
+    expect(convertCell("125%", "en", "pt")).toBe("1,25");
+    expect(convertCell("-0.50%", "en", "pt")).toBe("-0,0050");
+    expect(convertCell(".5%", "en", "pt")).toBe("0,005");
+    expect(convertCell("+12,5 %", "pt", "en")).toBe("+0.125");
+  });
+
+  it("supports currency symbols and grouped numbers in percentages", () => {
+    expect(convertCell("$1,250%", "en", "pt")).toBe("12,50");
+    expect(convertCell("€ 1.250,00 %", "pt", "en")).toBe("12.5000");
+  });
+
   it("preserves signs and supports decimals without a leading zero", () => {
     expect(convertCell("-12.50", "en", "pt")).toBe("-12,50");
     expect(convertCell("+,75", "pt", "en")).toBe("+.75");
@@ -45,7 +58,9 @@ describe("convertCell", () => {
   it("leaves unsupported or malformed values unchanged", () => {
     for (const value of [
       "1e3",
-      "25%",
+      "%",
+      "25%%",
+      "25% forecast",
       "(1,000.00)",
       "1,23",
       "1 23.45",
@@ -88,6 +103,16 @@ describe("convertTabSeparatedText", () => {
     );
     expect(convertTabSeparatedText(input, "pt", "en")).toBe(
       "Name\tAmount\r\nAlpha\t1 234.50\nBeta\t2345.75",
+    );
+  });
+
+  it("converts percentages without changing the TSV structure", () => {
+    const input = "Rate\tGrowth\r\n25%\t-50%\nlabel\t€ 1.250,00 %";
+    expect(convertTabSeparatedText(input, "en", "pt")).toBe(
+      "Rate\tGrowth\r\n0,25\t-0,50\nlabel\t€ 1.250,00 %",
+    );
+    expect(convertTabSeparatedText(input, "pt", "en")).toBe(
+      "Rate\tGrowth\r\n0.25\t-0.50\nlabel\t12.5000",
     );
   });
 });

@@ -11,6 +11,7 @@ A browser-only utility for moving tab-separated cells between Microsoft Excel an
   separators or common spreadsheet spacing, remove grouping and surrounding currency symbols,
   and preserve fractional precision.
 - Treat a dash, with or without a currency symbol, as the numeric value zero.
+- Convert values followed by `%` to numbers divided by 100.
 - Keep text, unsupported values, empty cells, tabs, and line breaks unchanged.
 
 The selected direction and cultures are saved in local storage. Pasted and converted spreadsheet data is never stored or sent anywhere.

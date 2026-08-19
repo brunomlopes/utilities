@@ -38,6 +38,22 @@ function isDirection(value: unknown): value is Direction {
   return value === "excel-to-sheets" || value === "sheets-to-excel";
 }
 
+function divideByHundred(value: string, decimal: string, targetDecimal: string): string {
+  const sign = value.startsWith("+") || value.startsWith("-") ? value[0] : "";
+  const unsignedValue = sign ? value.slice(1) : value;
+  const decimalIndex = unsignedValue.indexOf(decimal);
+  const whole = decimalIndex === -1 ? unsignedValue : unsignedValue.slice(0, decimalIndex);
+  const fraction = decimalIndex === -1 ? "" : unsignedValue.slice(decimalIndex + decimal.length);
+  const digits = `${whole}${fraction}`;
+  const shiftedDecimalIndex = whole.length - 2;
+
+  if (shiftedDecimalIndex <= 0) {
+    return `${sign}0${targetDecimal}${"0".repeat(-shiftedDecimalIndex)}${digits}`;
+  }
+
+  return `${sign}${digits.slice(0, shiftedDecimalIndex)}${targetDecimal}${digits.slice(shiftedDecimalIndex)}`;
+}
+
 export function parsePreferences(value: string | null): InterchangePreferences | null {
   if (!value) return null;
 
@@ -81,8 +97,11 @@ export function getConversionCultures(preferences: InterchangePreferences): {
 export function convertCell(cell: string, sourceCulture: Culture, targetCulture: Culture): string {
   if (!cell) return cell;
 
-  const candidate = cell.replace(CURRENCY_SYMBOL_PATTERN, "").trim();
+  let candidate = cell.replace(CURRENCY_SYMBOL_PATTERN, "").trim();
   if (candidate === "-") return "0";
+
+  const isPercentage = candidate.endsWith("%");
+  if (isPercentage) candidate = candidate.slice(0, -1).trimEnd();
 
   const { decimal, grouping } = CULTURE_SEPARATORS[sourceCulture];
   const escapedDecimal = escapeForRegularExpression(decimal);
@@ -95,6 +114,10 @@ export function convertCell(cell: string, sourceCulture: Culture, targetCulture:
   if (!numberPattern.test(candidate)) return cell;
 
   const ungrouped = candidate.split(grouping).join("").replace(SPACE_GROUPING_PATTERN, "");
+  if (isPercentage) {
+    return divideByHundred(ungrouped, decimal, CULTURE_SEPARATORS[targetCulture].decimal);
+  }
+
   const decimalIndex = ungrouped.indexOf(decimal);
   if (decimalIndex === -1) return ungrouped;
 

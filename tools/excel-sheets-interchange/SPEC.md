@@ -26,6 +26,7 @@ Input.2 - Numbers are interpreted using the culture selected for the input
 Input.3 - Any currency symbol is removed
 Input.4 - If a cell contains just - , or a currency symbol and -, it is considered to be the number 0
 Input.5 - A space can be interpreted as a thousands separator
+Input.6 - If a cell contains a number followed by the sign %, then it's considered a number, and divided by 100
 
 The output text box is then filled with the same sequence:
 Output.1 - Numbers are converted to strings using the culture selected for the output
