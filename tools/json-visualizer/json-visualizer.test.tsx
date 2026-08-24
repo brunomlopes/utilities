@@ -815,6 +815,35 @@ describe("JsonVisualizer", () => {
     expect(screen.getByText("Copied to clipboard.")).toBeInTheDocument();
   });
 
+  it("replaces Copy JSON with Copy table and copies the rendered sort order as TSV", async () => {
+    render(<JsonVisualizer />);
+    update(
+      JSON.stringify({
+        records: [
+          { name: "Beta", score: 10 },
+          { name: "Alpha", score: 2 },
+        ],
+      }),
+      "",
+    );
+    act(() => vi.advanceTimersByTime(250));
+
+    fireEvent.click(screen.getByRole("tab", { name: "Table" }));
+    expect(screen.queryByRole("button", { name: "Copy JSON" })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "score" }));
+    const copyTable = screen.getByRole("button", { name: "Copy table" });
+    expect(copyTable).toHaveAttribute("title", "Copy table");
+
+    await act(async () => copyTable.click());
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+      "name\tscore\nAlpha\t2\nBeta\t10",
+    );
+
+    fireEvent.click(screen.getByRole("tab", { name: "Tree" }));
+    expect(screen.getByRole("button", { name: "Copy JSON" })).toBeInTheDocument();
+  });
+
   it("collapses and restores the input pane without losing its content", () => {
     render(<JsonVisualizer />);
     const sourceInput = screen.getByLabelText("Source JSON");

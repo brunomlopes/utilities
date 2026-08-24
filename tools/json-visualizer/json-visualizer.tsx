@@ -22,6 +22,7 @@ import {
 import { IconButton } from "./icon-button";
 import { createTableModel } from "./table-model";
 import { getSortedRowIndices, type SortDirection } from "./table-sort";
+import { formatTableForClipboard } from "./table-clipboard";
 
 const DEBOUNCE_MS = 250;
 const FILTER_RESIZE_THROTTLE_MS = 250;
@@ -435,11 +436,26 @@ export function JsonVisualizer({
   }, []);
 
   async function copyOutput() {
+    const isCopyingTable = outputView === "table";
+    const rootSort = sortStates[ROOT_TABLE_SCOPE];
+    const tableRowIndices =
+      tableModel && rootSort && tableModel.columnKeys.includes(rootSort.columnKey)
+        ? getSortedRowIndices(tableModel, rootSort.columnKey, rootSort.direction)
+        : tableModel?.rows.map((_, index) => index) ?? [];
+    const clipboardText =
+      isCopyingTable && tableModel
+        ? formatTableForClipboard(tableModel, tableRowIndices)
+        : output;
+
     try {
-      await navigator.clipboard.writeText(output);
+      await navigator.clipboard.writeText(clipboardText);
       setCopyStatus("Copied to clipboard.");
     } catch {
-      setCopyStatus("Could not copy. Select the output and copy it manually.");
+      setCopyStatus(
+        isCopyingTable
+          ? "Could not copy the table."
+          : "Could not copy. Select the output and copy it manually.",
+      );
     }
   }
 
@@ -735,10 +751,14 @@ export function JsonVisualizer({
             </label>
             <IconButton
               icon="copy"
-              label="Copy JSON"
+              label={outputView === "table" ? "Copy table" : "Copy JSON"}
               className="copy-button"
               onClick={copyOutput}
-              disabled={!output}
+              disabled={
+                outputView === "table"
+                  ? !tableModel || tableModel.columns.length === 0
+                  : !output
+              }
             />
           </div>
         </div>
