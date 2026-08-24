@@ -17,7 +17,13 @@ The filter to apply is described as follows:
 - Filter 8. Nested filters should work. FollowUps[Content[Title]] should filter according to example 7
 - Filter 9. Nested selectors match direct children, while a nested standalone `*` crosses any number of descendant levels recursively. For example, `Stages[*[Content[Title]]]` filters according to example 8.
 - Filter 10. A dollar sign should represent the root, so that $[Followups] should only match property Followups on the root object, and not any sub-properties named Followups
-- Filter 11. A dollar sign, when the root is an array, represents each direct object item on the root array: `$[...]` applies independently to each such item as a root. Matching object items are retained in their original order, while nonmatching object items and primitive items are removed. Nested arrays are not treated as additional roots. For example, `$[FollowUps]` selects a direct `FollowUps` property from each root-array object; the bracketed form is required, not `$FollowUps`.
+- Filter 11. A dollar sign, when the root is an array, represents each direct object item on the root array: `$[...]` applies independently to each such item as a root. Matching object items are retained in their original order, while nonmatching object items and primitive items are removed. Nested arrays are not treated as additional roots. For example, `$[FollowUps]` selects a direct `FollowUps` property from each root-array object;
+- Filter 12. Suffixing `^` to a bare property name pulls the property and its complete value to the output root object and removes ancestor branches that are empty after filtering. If the input root is an array, each direct object item is an independent output root and pull destination. Adding a bare property name after `^` renames the pulled property; for example, `MsTeamsProviderEnabled^NewPropertyName` pulls `MsTeamsProviderEnabled` as `NewPropertyName`.
+- Filter 12.1. Quoting the entire property name makes `^` literal. For example, `"MsTeamsProviderEnabled^"` matches a property named `MsTeamsProviderEnabled^` and does not pull it.
+- Filter 12.2. Pull selectors support wildcard source names but cannot be combined with equality predicates or bracket children.
+- Filter 12.3. Properties are assigned to each output root in JSON encounter order. The first value assigned to a destination property wins. Each later assignment that would replace it is rejected and produces a separate filter error in the form `Property X would be overwritten with value Y.` This rule applies to multiple wildcard matches, multiple nested matches, and collisions with normally selected root properties. Filtering continues and the output remains available alongside the errors.
+
+
 
 Filters 5–7 compare scalar values by their text. Bare values support strings without spaces,
 numbers, booleans, and `null`; JSON-quoted values support spaces and escapes. Consequently,
@@ -486,4 +492,108 @@ When filtered by `Stages[Id:2,FollowUps[Content[Title]]` would appear as
     }
   ]
 }
+```
+
+#### Example 10
+
+The `database_name,config[SsoProvidersConfigurations[MsTeamsProviderEnabled^]]` when applied to
+
+```json
+[
+  { "database_name": "astar-tenant" },
+  {
+    "database_name": "enoc-migration-tenant",
+    "config": {
+      "SsoProvidersConfigurations": [
+        {
+          "SsoProvider": "AzureAd",
+          "MsTeamsProviderEnabled": true
+        }
+      ]
+    }
+  },
+  {
+    "database_name": "enoc-tenant",
+    "config": {
+      "SsoProvidersConfigurations": [
+        {
+          "SsoProvider": "AzureAd",
+          "MsTeamsProviderEnabled": true
+        }
+      ]
+    }
+  },
+  {
+    "database_name": "enoc-test-tenant",
+    "config": {
+      "SsoProvidersConfigurations": [
+        {
+          "SsoProvider": "AzureAd",
+          "MsTeamsProviderEnabled": true
+        }
+      ]
+    }
+  },
+  { "database_name": "swa-tenant" }
+]
+```
+
+Would result in
+```json
+[
+  { "database_name": "astar-tenant" },
+  {
+    "database_name": "enoc-migration-tenant",
+    "MsTeamsProviderEnabled": true
+  },
+  {
+    "database_name": "enoc-tenant",
+    "MsTeamsProviderEnabled": true
+  },
+  {
+    "database_name": "enoc-test-tenant",
+    "MsTeamsProviderEnabled": true
+  },
+  { "database_name": "swa-tenant" }
+]
+```
+
+Escaping a property name allows for the character to appear on the property names. `"MsTeamsProviderEnabled^"` would match the corresponding properties below
+```json
+[
+  { "database_name": "astar-tenant" },
+  {
+    "database_name": "enoc-migration-tenant",
+    "MsTeamsProviderEnabled^": true
+  },
+  {
+    "database_name": "enoc-tenant",
+    "MsTeamsProviderEnabled^": true
+  },
+  {
+    "database_name": "enoc-test-tenant",
+    "MsTeamsProviderEnabled^": true
+  },
+  { "database_name": "swa-tenant" }
+]
+```
+
+Adding a property name after `^` would allow renaming the property `MsTeamsProviderEnabled^` to a new name. For example, `database_name,config[SsoProvidersConfigurations[MsTeamsProviderEnabled^NewPropertyName]]` would result in:
+```json
+[
+  { "database_name": "astar-tenant" },
+  {
+    "database_name": "enoc-migration-tenant",
+    "NewPropertyName": true
+  },
+  {
+    "database_name": "enoc-tenant",
+    "NewPropertyName": true
+  },
+  {
+    "database_name": "enoc-test-tenant",
+    "NewPropertyName": true
+  },
+  { "database_name": "swa-tenant" }
+]
 ```

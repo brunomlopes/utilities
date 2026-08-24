@@ -751,6 +751,20 @@ describe("JsonVisualizer", () => {
     expect(screen.getByLabelText("Filtered JSON output")).toHaveValue("");
   });
 
+  it("shows every pull collision error without clearing the first-value output", () => {
+    render(<JsonVisualizer />);
+    update(
+      JSON.stringify({ records: [{ selectedOne: 1, selectedTwo: 2 }, { selectedThree: 3 }] }),
+      "records[selected*^choice]",
+    );
+    act(() => vi.advanceTimersByTime(250));
+
+    expect(screen.getByLabelText("Filter expression")).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByText("Property choice would be overwritten with value 2.")).toBeVisible();
+    expect(screen.getByText("Property choice would be overwritten with value 3.")).toBeVisible();
+    expect(screen.getByLabelText("Filtered JSON output")).toHaveValue('{ "choice": 1 }');
+  });
+
   it("copies output and announces success", async () => {
     render(<JsonVisualizer />);
     update('{"a":1}', "a");

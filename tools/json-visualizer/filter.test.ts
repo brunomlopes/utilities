@@ -117,6 +117,17 @@ describe("parseFilter", () => {
     ]);
   });
 
+  it("parses pull selectors, aliases, and wildcard source names", () => {
+    expect(parseFilter("enabled^,setting*^SelectedSetting")).toEqual([
+      { type: "pull", name: "enabled", destinationName: undefined },
+      { type: "pull", name: "setting*", destinationName: "SelectedSetting" },
+    ]);
+  });
+
+  it("treats a caret inside a quoted property name literally", () => {
+    expect(parseFilter('"enabled^"')).toEqual([{ type: "plain", name: "enabled^" }]);
+  });
+
   it.each([
     "a,",
     "a[]",
@@ -130,6 +141,10 @@ describe("parseFilter", () => {
     "a=[]",
     'a="open',
     "outer[$[value]]",
+    "^alias",
+    "name^^alias",
+    "name^alias[value]",
+    "name^=value",
   ]) (
     "rejects malformed expression %s",
     (expression) => expect(() => parseFilter(expression)).toThrow(FilterSyntaxError),
@@ -478,6 +493,74 @@ describe("filterJson", () => {
     });
     expect(filterJson(input, parseFilter("items[details[title,status=active]]")).value).toEqual({
       root: { items: [{ details: { title: "Keep" } }] },
+    });
+  });
+
+  it("pulls a nested property to an object root and removes empty ancestors", () => {
+    const input: JsonValue = {
+      database_name: "tenant",
+      config: {
+        providers: [{ enabled: true, ignored: "value" }],
+      },
+    };
+
+    expect(filterJson(input, parseFilter("database_name,config[providers[enabled^]]"))).toEqual({
+      matched: true,
+      value: { database_name: "tenant", enabled: true },
+    });
+  });
+
+  it("pulls independently to each direct object item in a root array", () => {
+    const input: JsonValue = [
+      { id: 1, nested: { value: "first" } },
+      { id: 2, nested: { value: "second" } },
+    ];
+
+    expect(filterJson(input, parseFilter("id,nested[value^renamed]"))).toEqual({
+      matched: true,
+      value: [
+        { id: 1, renamed: "first" },
+        { id: 2, renamed: "second" },
+      ],
+    });
+  });
+
+  it("keeps the first pulled value and reports every later overwrite", () => {
+    const input: JsonValue = {
+      records: [
+        { selectedOne: 1, selectedTwo: 2 },
+        { selectedThree: 3 },
+      ],
+    };
+
+    expect(filterJson(input, parseFilter("records[selected*^choice]"))).toEqual({
+      matched: true,
+      value: { choice: 1 },
+      errors: [
+        "Property choice would be overwritten with value 2.",
+        "Property choice would be overwritten with value 3.",
+      ],
+    });
+  });
+
+  it("uses encounter order when a pull destination collides with a selected root property", () => {
+    const input: JsonValue = {
+      nested: { value: "pulled first" },
+      result: "selected later",
+    };
+
+    expect(filterJson(input, parseFilter("nested[value^result],result"))).toEqual({
+      matched: true,
+      value: { result: "pulled first" },
+      errors: ["Property result would be overwritten with value \"selected later\"."],
+    });
+  });
+
+  it("matches quoted caret property names without pulling them", () => {
+    const input: JsonValue = { nested: { "enabled^": true } };
+    expect(filterJson(input, parseFilter('"enabled^"'))).toEqual({
+      matched: true,
+      value: { nested: { "enabled^": true } },
     });
   });
 

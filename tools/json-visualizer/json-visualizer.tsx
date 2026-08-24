@@ -34,7 +34,7 @@ interface Evaluation {
   output: string;
   filteredValue: JsonValue | null;
   jsonError: string | null;
-  filterError: string | null;
+  filterErrors: string[];
 }
 
 type OutputView = "tree" | "table";
@@ -188,16 +188,16 @@ function NestedTableCell({
 
 function evaluate(jsonText: string, filterText: string): Evaluation {
   let clauses;
-  let filterError: string | null = null;
+  const filterErrors: string[] = [];
 
   try {
     clauses = parseFilter(filterText);
   } catch (error) {
-    filterError = error instanceof FilterSyntaxError ? error.message : "The filter is invalid.";
+    filterErrors.push(error instanceof FilterSyntaxError ? error.message : "The filter is invalid.");
   }
 
   if (!jsonText.trim()) {
-    return { output: "", filteredValue: null, jsonError: null, filterError };
+    return { output: "", filteredValue: null, jsonError: null, filterErrors };
   }
 
   let value: JsonValue;
@@ -205,11 +205,11 @@ function evaluate(jsonText: string, filterText: string): Evaluation {
     value = JSON.parse(jsonText) as JsonValue;
   } catch (error) {
     const detail = error instanceof Error ? error.message : "The document is not valid JSON.";
-    return { output: "", filteredValue: null, jsonError: detail, filterError };
+    return { output: "", filteredValue: null, jsonError: detail, filterErrors };
   }
 
-  if (filterError || !clauses) {
-    return { output: "", filteredValue: null, jsonError: null, filterError };
+  if (!clauses) {
+    return { output: "", filteredValue: null, jsonError: null, filterErrors };
   }
 
   const filtered = filterJson(value, clauses);
@@ -217,7 +217,7 @@ function evaluate(jsonText: string, filterText: string): Evaluation {
     output: JSON.stringify(filtered.value, null, 2),
     filteredValue: filtered.value,
     jsonError: null,
-    filterError: null,
+    filterErrors: filtered.errors ?? [],
   };
 }
 
@@ -500,7 +500,7 @@ export function JsonVisualizer({
     setJsonText(showFormatted ? pasteVersions.formatted : pasteVersions.raw);
   }
 
-  const filterDescribedBy = [filterHelpId, evaluation.filterError ? filterErrorId : null]
+  const filterDescribedBy = [filterHelpId, evaluation.filterErrors.length > 0 ? filterErrorId : null]
     .filter(Boolean)
     .join(" ");
 
@@ -627,6 +627,7 @@ export function JsonVisualizer({
                 array. Nest brackets for deeper direct children, or use *[...] to search descendant
                 levels recursively. Use $[x] to select x only on the root object, or on each direct
                 object item when the root is an array. Filter values with x[id,status=active].
+                Append ^ to pull a property to the root, or ^NewName to pull and rename it.
               </span>
             </span>
           </div>
@@ -644,16 +645,18 @@ export function JsonVisualizer({
             spellCheck={false}
             autoComplete="off"
             rows={1}
-            aria-invalid={Boolean(evaluation.filterError)}
+            aria-invalid={evaluation.filterErrors.length > 0}
             aria-describedby={filterDescribedBy}
           />
-          <p
+          <div
             id={filterErrorId}
-            className={`field-message error-message ${evaluation.filterError ? "" : "is-hidden"}`}
+            className={`field-message error-message ${evaluation.filterErrors.length > 0 ? "" : "is-hidden"}`}
             role="alert"
           >
-            {evaluation.filterError ?? "Valid filter"}
-          </p>
+            {evaluation.filterErrors.length > 0
+              ? evaluation.filterErrors.map((error, index) => <div key={`${index}:${error}`}>{error}</div>)
+              : "Valid filter"}
+          </div>
         </div>
 
         <div className="output-heading">
