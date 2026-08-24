@@ -533,7 +533,9 @@ describe("filterJson", () => {
       ],
     };
 
-    expect(filterJson(input, parseFilter("records[selected*^choice]"))).toEqual({
+    const filtered = filterJson(input, parseFilter("records[selected*^choice]"));
+
+    expect(filtered).toMatchObject({
       matched: true,
       value: { choice: 1 },
       errors: [
@@ -541,6 +543,25 @@ describe("filterJson", () => {
         "Property choice would be overwritten with value 3.",
       ],
     });
+    expect(
+      filtered.overwriteErrors?.map(({ message, propertyName, itemNumber }) => ({
+        message,
+        propertyName,
+        itemNumber,
+      })),
+    ).toEqual([
+      {
+        message: "Property choice would be overwritten with value 2.",
+        propertyName: "choice",
+        itemNumber: undefined,
+      },
+      {
+        message: "Property choice would be overwritten with value 3.",
+        propertyName: "choice",
+        itemNumber: undefined,
+      },
+    ]);
+    expect(filtered.overwriteErrors?.every((error) => error.target === filtered.value)).toBe(true);
   });
 
   it("uses encounter order when a pull destination collides with a selected root property", () => {
@@ -549,11 +570,42 @@ describe("filterJson", () => {
       result: "selected later",
     };
 
-    expect(filterJson(input, parseFilter("nested[value^result],result"))).toEqual({
+    const filtered = filterJson(input, parseFilter("nested[value^result],result"));
+
+    expect(filtered).toMatchObject({
       matched: true,
       value: { result: "pulled first" },
       errors: ["Property result would be overwritten with value \"selected later\"."],
     });
+    expect(filtered.overwriteErrors?.[0]).toMatchObject({
+      message: "Property result would be overwritten with value \"selected later\".",
+      propertyName: "result",
+      itemNumber: undefined,
+    });
+    expect(filtered.overwriteErrors?.[0].target).toBe(filtered.value);
+  });
+
+  it("prefixes collisions with the one-based original root-array item number", () => {
+    const input: JsonValue = [
+      null,
+      { records: [{ selectedOne: 1, selectedTwo: 2 }] },
+      { records: [{ selectedOne: 3 }] },
+    ];
+
+    const filtered = filterJson(input, parseFilter("records[selected*^choice]"));
+
+    expect(filtered.value).toEqual([{ choice: 1 }, { choice: 3 }]);
+    expect(filtered.errors).toEqual([
+      "[Item #2] Property choice would be overwritten with value 2.",
+    ]);
+    expect(filtered.overwriteErrors?.[0]).toMatchObject({
+      message: "[Item #2] Property choice would be overwritten with value 2.",
+      propertyName: "choice",
+      itemNumber: 2,
+    });
+    expect(filtered.overwriteErrors?.[0].target).toBe(
+      Array.isArray(filtered.value) ? filtered.value[0] : undefined,
+    );
   });
 
   it("matches quoted caret property names without pulling them", () => {

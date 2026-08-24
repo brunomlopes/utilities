@@ -765,6 +765,46 @@ describe("JsonVisualizer", () => {
     expect(screen.getByLabelText("Filtered JSON output")).toHaveValue('{ "choice": 1 }');
   });
 
+  it("highlights every flattened destination cell and lists its root-item errors", () => {
+    render(<JsonVisualizer />);
+    update(
+      JSON.stringify([
+        null,
+        {
+          id: 1,
+          source: {
+            choiceOne: { left: 10, right: 20 },
+            choiceTwo: { left: 30, right: 40 },
+          },
+        },
+        { id: 2, source: { choiceOne: { left: 50, right: 60 } } },
+      ]),
+      "id,source[choice*^details]",
+    );
+    act(() => vi.advanceTimersByTime(250));
+    fireEvent.click(screen.getByRole("tab", { name: "Table" }));
+
+    const rows = screen.getAllByRole("row");
+    const firstDataCells = Array.from(rows[1].querySelectorAll("td"));
+    const secondDataCells = Array.from(rows[2].querySelectorAll("td"));
+    const message =
+      '[Item #2] Property details would be overwritten with value {"left":30,"right":40}.';
+
+    expect(firstDataCells[0]).not.toHaveClass("overwrite-error-cell");
+    expect(firstDataCells[1]).toHaveClass("overwrite-error-cell");
+    expect(firstDataCells[2]).toHaveClass("overwrite-error-cell");
+    expect(secondDataCells.every((cell) => !cell.classList.contains("overwrite-error-cell"))).toBe(
+      true,
+    );
+    const overwriteTooltips = document.querySelectorAll<HTMLElement>(".overwrite-error-tooltip");
+    expect(overwriteTooltips).toHaveLength(2);
+    expect(screen.getAllByText(message)).toHaveLength(3);
+    expect(firstDataCells[1]).toHaveAttribute(
+      "aria-describedby",
+      overwriteTooltips[0].id,
+    );
+  });
+
   it("copies output and announces success", async () => {
     render(<JsonVisualizer />);
     update('{"a":1}', "a");

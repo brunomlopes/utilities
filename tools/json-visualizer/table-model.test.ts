@@ -271,11 +271,14 @@ describe("createTableModel", () => {
   });
 
   it("retains raw values and distinct stable keys for duplicate display labels", () => {
+    const row: JsonValue = { owner: { id: 2 }, "owner.id": "10" };
     const model = createTableModel({
-      records: [{ owner: { id: 2 }, "owner.id": "10" }],
+      records: [row],
     });
 
     expect(model?.columnKeys).toEqual(['["owner","id"]', '["owner.id",null]']);
     expect(model?.sortValues).toEqual([[2, "10"]]);
+    expect(model?.columnParents).toEqual(["owner", "owner.id"]);
+    expect(model?.rowObjects[0]).toBe(row);
   });
 });

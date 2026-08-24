@@ -7,6 +7,8 @@ export interface TableModel {
   columnKeys: string[];
   rows: string[][];
   sortValues: (JsonValue | undefined)[][];
+  rowObjects: JsonObject[];
+  columnParents: string[];
 }
 
 interface TableColumn {
@@ -173,5 +175,7 @@ export function createTableModel(value: JsonValue | null): TableModel | null {
     sortValues: objectRows.map((row) =>
       columns.map((column) => readCellValue(row, column)),
     ),
+    rowObjects: objectRows,
+    columnParents: columns.map((column) => column.parent),
   };
 }

@@ -22,6 +22,7 @@ The filter to apply is described as follows:
 - Filter 12.1. Quoting the entire property name makes `^` literal. For example, `"MsTeamsProviderEnabled^"` matches a property named `MsTeamsProviderEnabled^` and does not pull it.
 - Filter 12.2. Pull selectors support wildcard source names but cannot be combined with equality predicates or bracket children.
 - Filter 12.3. Properties are assigned to each output root in JSON encounter order. The first value assigned to a destination property wins. Each later assignment that would replace it is rejected and produces a separate filter error in the form `Property X would be overwritten with value Y.` This rule applies to multiple wildcard matches, multiple nested matches, and collisions with normally selected root properties. Filtering continues and the output remains available alongside the errors.
+- Filter 12.3.1. If the input root is an array and an assignment would cause an overwrite error, prefix the message with the item's one-based position in the original root array: `[Item #Z] Property X would be overwritten with value Y.` Positions include primitive and nonmatching items that are later omitted from the filtered output.
 
 
 
@@ -66,6 +67,7 @@ This table contains as headers the subproperties of objects found on the array, 
 - UI.13 The help text for filter expression should be as a tooltip for a question mark icon near "FILTER EXPRESSION"
 - UI.14 When rendering a table, if the root object is an array with more than one item, use the root object as the array for the table
 - UI.15 When rendering a table cell, if the value is an array, render it as a subtable, using the same rules as the main table.
+- UI.16 When rendering a table, if a cell corresponds to a value that would be overwritten as per rule Filter 12.3, then the cell has a different background, and when we hover over the cell, a tooltip shows the errors corresponding to the cell.
 
 ### Table rendering rules
 
@@ -77,6 +79,7 @@ This table contains as headers the subproperties of objects found on the array, 
 - A property is flattened by one level when every present, non-null value for that property is a non-empty object whose direct children are all primitives. Its columns use `parent.child` labels. Missing and null parent values do not prevent flattening and render blank; nested objects are not flattened recursively.
 - Missing properties render as blank cells. Strings render without quotes, other primitives render as their text, and arrays or non-flattened objects render as compact JSON. A present `null` value renders as `null` unless it is the missing/null parent of a flattened property.
 - Literal dotted property names and dotted labels produced by flattening remain distinct columns internally, even when their displayed labels are identical.
+- A cell for the surviving destination of one or more Filter 12.3 overwrite errors has a distinct background. Hovering or focusing the cell shows every corresponding overwrite error in a tooltip. When the destination property is flattened, this applies to every column derived from that property.
 - Sorting is limited to one column and cycles from original order to ascending, descending, and back to original order. Numbers sort numerically, strings case-insensitively, booleans with `false` before `true`, and mixed-type or complex columns by displayed text. Equal values retain their original order; missing and empty-string values remain last in both directions, while `null` is treated as populated.
 - If no eligible object array exists, the table shows the no-object-array empty state. If an eligible array's object rows have no properties, it shows the no-properties empty state.
 

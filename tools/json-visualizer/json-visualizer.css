@@ -403,6 +403,48 @@
   background: rgb(23 78 71 / 3%);
 }
 
+.result-table td.overwrite-error-cell {
+  position: relative;
+  background: #fff1c7;
+  box-shadow: inset 3px 0 #c77900;
+  cursor: help;
+}
+
+.overwrite-error-cell:focus-visible {
+  outline: 3px solid rgb(199 121 0 / 35%);
+  outline-offset: -3px;
+}
+
+.overwrite-error-tooltip {
+  position: absolute;
+  z-index: 6;
+  top: calc(100% - 4px);
+  left: 10px;
+  display: grid;
+  width: max-content;
+  max-width: min(420px, 70vw);
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  color: #fffefa;
+  background: #583900;
+  box-shadow: 0 10px 28px rgb(30 24 10 / 24%);
+  font-family: system-ui, sans-serif;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-4px);
+  transition: opacity 120ms ease, transform 120ms ease;
+}
+
+.overwrite-error-cell:hover .overwrite-error-tooltip,
+.overwrite-error-cell:focus .overwrite-error-tooltip,
+.overwrite-error-cell:focus-within .overwrite-error-tooltip {
+  opacity: 1;
+  transform: translateY(0);
+}
+
 .nested-table-scroll {
   max-width: min(640px, 60vw);
   overflow: auto;

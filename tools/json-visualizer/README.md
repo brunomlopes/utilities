@@ -20,6 +20,7 @@ A browser-only utility for pruning JSON documents by property name. It is part o
 - Add a bare destination name after the caret to rename a pulled property, as in `config[enabled^isEnabled]`. Quote the entire source name to treat a caret literally: `"enabled^"` selects that exact property without pulling it.
 - Pull selectors support wildcard source names, such as `settings[feature*^selectedFeature]`, but cannot be combined with equality predicates or bracket children.
 - Destination values use JSON encounter order. The first value assigned to a destination property wins. Every later assignment that would replace it leaves the first value intact and reports a separate `Property X would be overwritten with value Y.` filter error; this includes wildcard matches and collisions with normally selected root properties.
+- For a root array, overwrite errors use the one-based position in the original input, such as `[Item #2] Property X would be overwritten with value Y.` In the table view, the surviving destination cell is highlighted and exposes all of that cell's overwrite errors in a hover or keyboard-focus tooltip. If the destination is flattened, every derived cell is highlighted.
 - All names match case-insensitively. Bare names are trimmed. Double-quoted names use JSON string escaping and allow commas, brackets, or significant surrounding whitespace.
 - A matching property retains its complete value. Within arrays, unmatched elements are removed and matching elements keep their original order.
 

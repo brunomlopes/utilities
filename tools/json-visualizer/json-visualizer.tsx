@@ -12,7 +12,13 @@ import {
   useState,
 } from "react";
 import { formatCompactJson } from "./compact-format";
-import { filterJson, FilterSyntaxError, parseFilter, type JsonValue } from "./filter";
+import {
+  filterJson,
+  FilterSyntaxError,
+  parseFilter,
+  type FilterOverwriteError,
+  type JsonValue,
+} from "./filter";
 import { IconButton } from "./icon-button";
 import { createTableModel } from "./table-model";
 import { getSortedRowIndices, type SortDirection } from "./table-sort";
@@ -35,6 +41,7 @@ interface Evaluation {
   filteredValue: JsonValue | null;
   jsonError: string | null;
   filterErrors: string[];
+  overwriteErrors: FilterOverwriteError[];
 }
 
 type OutputView = "tree" | "table";
@@ -68,6 +75,7 @@ interface JsonTableProps {
   scope: string;
   sortStates: SortStates;
   onToggleSort: (scope: string, columnKey: string) => void;
+  overwriteErrors: readonly FilterOverwriteError[];
   nested?: boolean;
   label?: string;
 }
@@ -77,9 +85,11 @@ function JsonTable({
   scope,
   sortStates,
   onToggleSort,
+  overwriteErrors,
   nested = false,
   label,
 }: JsonTableProps) {
+  const overwriteTooltipPrefix = useId();
   const configuredSort = sortStates[scope];
   const activeSort =
     configuredSort && model.columnKeys.includes(configuredSort.columnKey)
@@ -126,9 +136,22 @@ function JsonTable({
               const value = model.sortValues[rowIndex][columnIndex];
               const columnKey = model.columnKeys[columnIndex];
               const nestedScope = JSON.stringify([scope, columnKey]);
+              const cellOverwriteErrors = overwriteErrors.filter(
+                (error) =>
+                  error.target === model.rowObjects[rowIndex] &&
+                  error.propertyName === model.columnParents[columnIndex],
+              );
+              const overwriteTooltipId = `${overwriteTooltipPrefix}-${rowIndex}-${columnIndex}`;
 
               return (
-                <td key={`${columnIndex}:${columnKey}`}>
+                <td
+                  key={`${columnIndex}:${columnKey}`}
+                  className={cellOverwriteErrors.length > 0 ? "overwrite-error-cell" : undefined}
+                  tabIndex={cellOverwriteErrors.length > 0 ? 0 : undefined}
+                  aria-describedby={
+                    cellOverwriteErrors.length > 0 ? overwriteTooltipId : undefined
+                  }
+                >
                   {Array.isArray(value) ? (
                     <NestedTableCell
                       value={value}
@@ -137,10 +160,22 @@ function JsonTable({
                       label={`${model.columns[columnIndex]} subtable`}
                       sortStates={sortStates}
                       onToggleSort={onToggleSort}
+                      overwriteErrors={overwriteErrors}
                     />
                   ) : (
                     cell
                   )}
+                  {cellOverwriteErrors.length > 0 ? (
+                    <span
+                      id={overwriteTooltipId}
+                      className="overwrite-error-tooltip"
+                      role="tooltip"
+                    >
+                      {cellOverwriteErrors.map((error, index) => (
+                        <span key={`${index}:${error.message}`}>{error.message}</span>
+                      ))}
+                    </span>
+                  ) : null}
                 </td>
               );
             })}
@@ -158,6 +193,7 @@ interface NestedTableCellProps {
   label: string;
   sortStates: SortStates;
   onToggleSort: (scope: string, columnKey: string) => void;
+  overwriteErrors: readonly FilterOverwriteError[];
 }
 
 function NestedTableCell({
@@ -167,6 +203,7 @@ function NestedTableCell({
   label,
   sortStates,
   onToggleSort,
+  overwriteErrors,
 }: NestedTableCellProps) {
   const model = useMemo(() => createTableModel(value), [value]);
 
@@ -179,6 +216,7 @@ function NestedTableCell({
         scope={scope}
         sortStates={sortStates}
         onToggleSort={onToggleSort}
+        overwriteErrors={overwriteErrors}
         nested
         label={label}
       />
@@ -197,7 +235,13 @@ function evaluate(jsonText: string, filterText: string): Evaluation {
   }
 
   if (!jsonText.trim()) {
-    return { output: "", filteredValue: null, jsonError: null, filterErrors };
+    return {
+      output: "",
+      filteredValue: null,
+      jsonError: null,
+      filterErrors,
+      overwriteErrors: [],
+    };
   }
 
   let value: JsonValue;
@@ -205,11 +249,23 @@ function evaluate(jsonText: string, filterText: string): Evaluation {
     value = JSON.parse(jsonText) as JsonValue;
   } catch (error) {
     const detail = error instanceof Error ? error.message : "The document is not valid JSON.";
-    return { output: "", filteredValue: null, jsonError: detail, filterErrors };
+    return {
+      output: "",
+      filteredValue: null,
+      jsonError: detail,
+      filterErrors,
+      overwriteErrors: [],
+    };
   }
 
   if (!clauses) {
-    return { output: "", filteredValue: null, jsonError: null, filterErrors };
+    return {
+      output: "",
+      filteredValue: null,
+      jsonError: null,
+      filterErrors,
+      overwriteErrors: [],
+    };
   }
 
   const filtered = filterJson(value, clauses);
@@ -218,6 +274,7 @@ function evaluate(jsonText: string, filterText: string): Evaluation {
     filteredValue: filtered.value,
     jsonError: null,
     filterErrors: filtered.errors ?? [],
+    overwriteErrors: filtered.overwriteErrors ?? [],
   };
 }
 
@@ -753,6 +810,7 @@ export function JsonVisualizer({
                 scope={ROOT_TABLE_SCOPE}
                 sortStates={sortStates}
                 onToggleSort={toggleColumnSort}
+                overwriteErrors={evaluation.overwriteErrors}
               />
             </div>
           )}

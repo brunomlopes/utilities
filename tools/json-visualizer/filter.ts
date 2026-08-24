@@ -40,6 +40,14 @@ export interface FilterResult {
   matched: boolean;
   value: JsonValue;
   errors?: string[];
+  overwriteErrors?: FilterOverwriteError[];
+}
+
+export interface FilterOverwriteError {
+  message: string;
+  propertyName: string;
+  target: { [key: string]: JsonValue };
+  itemNumber?: number;
 }
 
 export class FilterSyntaxError extends Error {
@@ -312,10 +320,12 @@ export function filterJson(value: JsonValue, clauses: FilterClause[]): FilterRes
     .flatMap((clause) => clause.children.map(compileClause));
 
   const errors: string[] = [];
+  const overwriteErrors: FilterOverwriteError[] = [];
 
   interface PullTarget {
     value: { [key: string]: JsonValue };
     retained: boolean;
+    itemNumber?: number;
   }
 
   interface VisitResult extends FilterResult {
@@ -327,16 +337,24 @@ export function filterJson(value: JsonValue, clauses: FilterClause[]): FilterRes
   }
 
   function assignFirst(
-    target: { [key: string]: JsonValue },
+    target: PullTarget,
     key: string,
     child: JsonValue,
   ): boolean {
-    if (Object.prototype.hasOwnProperty.call(target, key)) {
-      errors.push(`Property ${key} would be overwritten with value ${formatValue(child)}.`);
+    if (Object.prototype.hasOwnProperty.call(target.value, key)) {
+      const itemPrefix = target.itemNumber === undefined ? "" : `[Item #${target.itemNumber}] `;
+      const message = `${itemPrefix}Property ${key} would be overwritten with value ${formatValue(child)}.`;
+      errors.push(message);
+      overwriteErrors.push({
+        message,
+        propertyName: key,
+        target: target.value,
+        itemNumber: target.itemNumber,
+      });
       return false;
     }
 
-    target[key] = child;
+    target.value[key] = child;
     return true;
   }
 
@@ -344,12 +362,13 @@ export function filterJson(value: JsonValue, clauses: FilterClause[]): FilterRes
     current: JsonValue,
     directClauses?: readonly CompiledClause[],
     inheritedPullTarget?: PullTarget,
+    rootItemNumber?: number,
   ): VisitResult {
     if (Array.isArray(current)) {
       const result: JsonValue[] = [];
       let matched = false;
       for (const item of current) {
-        const filtered = visit(item, directClauses, inheritedPullTarget);
+        const filtered = visit(item, directClauses, inheritedPullTarget, rootItemNumber);
         matched ||= filtered.matched;
         if (filtered.retained) result.push(filtered.value);
       }
@@ -360,7 +379,11 @@ export function filterJson(value: JsonValue, clauses: FilterClause[]): FilterRes
 
     const result: { [key: string]: JsonValue } = {};
     const ownsPullTarget = inheritedPullTarget === undefined;
-    const pullTarget = inheritedPullTarget ?? { value: result, retained: false };
+    const pullTarget = inheritedPullTarget ?? {
+      value: result,
+      retained: false,
+      itemNumber: rootItemNumber,
+    };
     let matched = false;
     let retained = false;
     const directEqualityClauses = directClauses?.filter((clause) => clause.type === "equality") ?? [];
@@ -427,7 +450,7 @@ export function filterJson(value: JsonValue, clauses: FilterClause[]): FilterRes
       const pullClauses = matchingClauses.filter((clause) => clause.type === "pull");
       for (const clause of pullClauses) {
         const destinationName = clause.destinationName ?? key;
-        if (assignFirst(pullTarget.value, destinationName, child)) {
+        if (assignFirst(pullTarget, destinationName, child)) {
           pullTarget.retained = true;
         }
         matched = true;
@@ -435,7 +458,7 @@ export function filterJson(value: JsonValue, clauses: FilterClause[]): FilterRes
 
       if (matchingClauses.some((clause) => clause.type === "plain")) {
         if (result === pullTarget.value) {
-          if (assignFirst(result, key, child)) retained = true;
+          if (assignFirst(pullTarget, key, child)) retained = true;
         } else {
           result[key] = child;
           retained = true;
@@ -457,7 +480,7 @@ export function filterJson(value: JsonValue, clauses: FilterClause[]): FilterRes
       }
       if (filtered.retained) {
         if (result === pullTarget.value) {
-          if (assignFirst(result, key, filtered.value)) retained = true;
+          if (assignFirst(pullTarget, key, filtered.value)) retained = true;
         } else {
           result[key] = filtered.value;
           retained = true;
@@ -476,11 +499,11 @@ export function filterJson(value: JsonValue, clauses: FilterClause[]): FilterRes
   if (Array.isArray(value)) {
     const result: JsonValue[] = [];
 
-    for (const item of value) {
+    for (const [index, item] of value.entries()) {
       const filtered: VisitResult = isObject(item)
-        ? visit(item, rootClauses.length > 0 ? rootClauses : undefined)
+        ? visit(item, rootClauses.length > 0 ? rootClauses : undefined, undefined, index + 1)
         : Array.isArray(item) && globalClauses.length > 0
-          ? visit(item)
+          ? visit(item, undefined, undefined, index + 1)
           : { matched: false, retained: false, value: null };
 
       if (filtered.retained) result.push(filtered.value);
@@ -490,6 +513,7 @@ export function filterJson(value: JsonValue, clauses: FilterClause[]): FilterRes
       matched: result.length > 0,
       value: result,
       ...(errors.length > 0 ? { errors } : {}),
+      ...(overwriteErrors.length > 0 ? { overwriteErrors } : {}),
     };
   }
   const filtered = visit(value, rootClauses.length > 0 ? rootClauses : undefined);
@@ -497,5 +521,6 @@ export function filterJson(value: JsonValue, clauses: FilterClause[]): FilterRes
     matched: filtered.matched,
     value: filtered.value,
     ...(errors.length > 0 ? { errors } : {}),
+    ...(overwriteErrors.length > 0 ? { overwriteErrors } : {}),
   };
 }
