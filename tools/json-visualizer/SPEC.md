@@ -68,6 +68,7 @@ This table contains as headers the subproperties of objects found on the array, 
 - UI.14 When rendering a table, if the root object is an array with more than one item, use the root object as the array for the table
 - UI.15 When rendering a table cell, if the value is an array, render it as a subtable, using the same rules as the main table.
 - UI.16 When rendering a table, if a cell corresponds to a value that would be overwritten as per rule Filter 12.3, then the cell has a different background, and when we hover over the cell, a tooltip shows the errors corresponding to the cell.
+- UI.17 When rendering a table, the button to "copy json" gets replaced with "copy table", which copies the rendered table in a format that is easily pastable into excel or google sheets.
 
 ### Table rendering rules
 
