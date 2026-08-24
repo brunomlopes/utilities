@@ -8,6 +8,10 @@
 - Prefer static-export-compatible implementations by default.
 - Do not treat an agent's architectural preference or an inferred optimization as an explicit server-side requirement.
 
+## Node/npm location
+
+- Use the node runtime available at `C:\utils\nodejs\tools` to run code and tests
+
 ## Agent behaviour
 
 - Always ask any questions regarding the work to be done and wait for an answer. Do not assume or timeout.
