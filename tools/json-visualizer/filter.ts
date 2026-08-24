@@ -370,8 +370,19 @@ export function filterJson(value: JsonValue, clauses: FilterClause[]): FilterRes
 
   if (clauses.length === 0) return { matched: true, value };
   if (Array.isArray(value)) {
-    if (globalClauses.length === 0) return { matched: false, value: [] };
-    return visit(value);
+    const result: JsonValue[] = [];
+
+    for (const item of value) {
+      const filtered = isObject(item)
+        ? visit(item, rootClauses.length > 0 ? rootClauses : undefined)
+        : Array.isArray(item) && globalClauses.length > 0
+          ? visit(item)
+          : { matched: false, value: null };
+
+      if (filtered.matched) result.push(filtered.value);
+    }
+
+    return { matched: result.length > 0, value: result };
   }
   return visit(value, rootClauses.length > 0 ? rootClauses : undefined);
 }

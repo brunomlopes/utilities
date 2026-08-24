@@ -349,19 +349,35 @@ describe("filterJson", () => {
     });
   });
 
-  it("does not apply a root selector to items in a root array", () => {
+  it("applies a root selector independently to direct object items in a root array", () => {
     const input: JsonValue = [
-      { FollowUps: [{ id: 1 }] },
-      { FollowUps: [{ id: 2 }] },
+      { FollowUps: [{ id: 1 }], other: true },
+      { nested: { FollowUps: [{ id: 2 }] } },
+      42,
+      [{ FollowUps: [{ id: 3 }] }],
     ];
 
     expect(filterJson(input, parseFilter("$[FollowUps]"))).toEqual({
-      matched: false,
-      value: [],
+      matched: true,
+      value: [{ FollowUps: [{ id: 1 }] }],
     });
-    expect(filterJson(input, parseFilter("$[FollowUps],id")).value).toEqual([
+    expect(filterJson(input, parseFilter("$[FollowUps[id]]")).value).toEqual([
       { FollowUps: [{ id: 1 }] },
-      { FollowUps: [{ id: 2 }] },
+    ]);
+  });
+
+  it("unions root-anchored and ordinary selectors for root array items", () => {
+    const input: JsonValue = [
+      { FollowUps: [{ id: "root" }], ignored: true },
+      { nested: { FollowUps: [{ id: "nested" }], title: "Keep" } },
+      [{ title: "Nested array item" }],
+      false,
+    ];
+
+    expect(filterJson(input, parseFilter("$[FollowUps],title")).value).toEqual([
+      { FollowUps: [{ id: "root" }] },
+      { nested: { title: "Keep" } },
+      [{ title: "Nested array item" }],
     ]);
   });
 

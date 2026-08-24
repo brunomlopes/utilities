@@ -17,6 +17,7 @@ The filter to apply is described as follows:
 - Filter 8. Nested filters should work. FollowUps[Content[Title]] should filter according to example 7
 - Filter 9. Nested selectors match direct children, while a nested standalone `*` crosses any number of descendant levels recursively. For example, `Stages[*[Content[Title]]]` filters according to example 8.
 - Filter 10. A dollar sign should represent the root, so that $[Followups] should only match property Followups on the root object, and not any sub-properties named Followups
+- Filter 11. A dollar sign, when the root is an array, represents each direct object item on the root array: `$[...]` applies independently to each such item as a root. Matching object items are retained in their original order, while nonmatching object items and primitive items are removed. Nested arrays are not treated as additional roots. For example, `$[FollowUps]` selects a direct `FollowUps` property from each root-array object; the bracketed form is required, not `$FollowUps`.
 
 Filters 5–7 compare scalar values by their text. Bare values support strings without spaces,
 numbers, booleans, and `null`; JSON-quoted values support spaces and escapes. Consequently,

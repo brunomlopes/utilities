@@ -625,8 +625,8 @@ export function JsonVisualizer({
               <span id={filterHelpId} className="filter-help-tooltip" role="tooltip">
                 Use a,b for keys anywhere or x[a,b] for direct children, including items in an x
                 array. Nest brackets for deeper direct children, or use *[...] to search descendant
-                levels recursively. Use $[x] to select x only on the root object. Filter values with
-                x[id,status=active].
+                levels recursively. Use $[x] to select x only on the root object, or on each direct
+                object item when the root is an array. Filter values with x[id,status=active].
               </span>
             </span>
           </div>
