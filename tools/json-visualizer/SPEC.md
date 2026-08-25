@@ -18,11 +18,13 @@ The filter to apply is described as follows:
 - Filter 9. Nested selectors match direct children, while a nested standalone `*` crosses any number of descendant levels recursively. For example, `Stages[*[Content[Title]]]` filters according to example 8.
 - Filter 10. A dollar sign should represent the root, so that $[Followups] should only match property Followups on the root object, and not any sub-properties named Followups
 - Filter 11. A dollar sign, when the root is an array, represents each direct object item on the root array: `$[...]` applies independently to each such item as a root. Matching object items are retained in their original order, while nonmatching object items and primitive items are removed. Nested arrays are not treated as additional roots. For example, `$[FollowUps]` selects a direct `FollowUps` property from each root-array object;
-- Filter 12. Suffixing `^` to a bare property name pulls the property and its complete value to the output root object and removes ancestor branches that are empty after filtering. If the input root is an array, each direct object item is an independent output root and pull destination. Adding a bare property name after `^` renames the pulled property; for example, `MsTeamsProviderEnabled^NewPropertyName` pulls `MsTeamsProviderEnabled` as `NewPropertyName`.
-- Filter 12.1. Quoting the entire property name makes `^` literal. For example, `"MsTeamsProviderEnabled^"` matches a property named `MsTeamsProviderEnabled^` and does not pull it.
-- Filter 12.2. Pull selectors support wildcard source names but cannot be combined with equality predicates or bracket children.
-- Filter 12.3. Properties are assigned to each output root in JSON encounter order. The first value assigned to a destination property wins. Each later assignment that would replace it is rejected and produces a separate filter error in the form `Property X would be overwritten with value Y.` This rule applies to multiple wildcard matches, multiple nested matches, and collisions with normally selected root properties. Filtering continues and the output remains available alongside the errors.
-- Filter 12.3.1. If the input root is an array and an assignment would cause an overwrite error, prefix the message with the item's one-based position in the original root array: `[Item #Z] Property X would be overwritten with value Y.` Positions include primitive and nonmatching items that are later omitted from the filtered output.
+- Filter 12. Suffixing `!` to a bare property name pulls the property and its complete value all the way to the output root object. If the input root is an array, each direct object item is an independent output root and pull destination. For example, `config[enabled!]` produces `{ "enabled": ... }` for an object root.
+- Filter 12.1. Suffixing one or more `^` characters to a bare property name pulls the property up by that many ancestor levels: `^` pulls it one level up, `^^` pulls it two levels up, and so on. If the requested number of levels extends beyond the output root, the destination is clamped to the output root. Pulling removes ancestor branches that are empty after filtering.
+- Filter 12.2. Adding a bare property name after the complete pull operator renames the pulled property. For example, `MsTeamsProviderEnabled!NewPropertyName` pulls `MsTeamsProviderEnabled` to the output root as `NewPropertyName`, while `MsTeamsProviderEnabled^^NewPropertyName` pulls it two levels up under that name.
+- Filter 12.3. Quoting the entire property name makes `!` and `^` literal. For example, `"MsTeamsProviderEnabled!"` and `"MsTeamsProviderEnabled^"` match properties with those exact names and do not pull them.
+- Filter 12.4. Pull selectors support wildcard source names but cannot be combined with equality predicates or bracket children.
+- Filter 12.5. Properties are assigned to each pull destination in JSON encounter order. The first value assigned to a destination property wins. Each later assignment that would replace it is rejected and produces a separate filter error in the form `Property X would be overwritten with value Y.` This rule applies to multiple wildcard matches, multiple nested matches, and collisions with normally selected properties at the destination. Filtering continues and the output remains available alongside the errors.
+- Filter 12.5.1. If the input root is an array and an assignment would cause an overwrite error, prefix the message with the item's one-based position in the original root array: `[Item #Z] Property X would be overwritten with value Y.` Positions include primitive and nonmatching items that are later omitted from the filtered output.
 
 
 
@@ -67,7 +69,7 @@ This table contains as headers the subproperties of objects found on the array, 
 - UI.13 The help text for filter expression should be as a tooltip for a question mark icon near "FILTER EXPRESSION"
 - UI.14 When rendering a table, if the root object is an array with more than one item, use the root object as the array for the table
 - UI.15 When rendering a table cell, if the value is an array, render it as a subtable, using the same rules as the main table.
-- UI.16 When rendering a table, if a cell corresponds to a value that would be overwritten as per rule Filter 12.3, then the cell has a different background, and when we hover over the cell, a tooltip shows the errors corresponding to the cell.
+- UI.16 When rendering a table, if a cell corresponds to a value that would be overwritten as per rule Filter 12.5, then the cell has a different background, and when we hover over the cell, a tooltip shows the errors corresponding to the cell.
 - UI.17 When rendering a table, the button to "copy json" gets replaced with "copy table", which copies the rendered table in a format that is easily pastable into excel or google sheets.
 
 ### Table rendering rules
@@ -80,7 +82,7 @@ This table contains as headers the subproperties of objects found on the array, 
 - A property is flattened by one level when every present, non-null value for that property is a non-empty object whose direct children are all primitives. Its columns use `parent.child` labels. Missing and null parent values do not prevent flattening and render blank; nested objects are not flattened recursively.
 - Missing properties render as blank cells. Strings render without quotes, other primitives render as their text, and arrays or non-flattened objects render as compact JSON. A present `null` value renders as `null` unless it is the missing/null parent of a flattened property.
 - Literal dotted property names and dotted labels produced by flattening remain distinct columns internally, even when their displayed labels are identical.
-- A cell for the surviving destination of one or more Filter 12.3 overwrite errors has a distinct background. Hovering or focusing the cell shows every corresponding overwrite error in a tooltip. When the destination property is flattened, this applies to every column derived from that property.
+- A cell for the surviving destination of one or more Filter 12.5 overwrite errors has a distinct background. Hovering or focusing the cell shows every corresponding overwrite error in a tooltip. When the destination property is flattened, this applies to every column derived from that property.
 - Sorting is limited to one column and cycles from original order to ascending, descending, and back to original order. Numbers sort numerically, strings case-insensitively, booleans with `false` before `true`, and mixed-type or complex columns by displayed text. Equal values retain their original order; missing and empty-string values remain last in both directions, while `null` is treated as populated.
 - If no eligible object array exists, the table shows the no-object-array empty state. If an eligible array's object rows have no properties, it shows the no-properties empty state.
 
@@ -500,7 +502,7 @@ When filtered by `Stages[Id:2,FollowUps[Content[Title]]` would appear as
 
 #### Example 10
 
-The `database_name,config[SsoProvidersConfigurations[MsTeamsProviderEnabled^]]` when applied to
+The `database_name,config[SsoProvidersConfigurations[MsTeamsProviderEnabled!]]` when applied to
 
 ```json
 [
@@ -562,7 +564,7 @@ Would result in
 ]
 ```
 
-Escaping a property name allows for the character to appear on the property names. `"MsTeamsProviderEnabled^"` would match the corresponding properties below
+Quoting a property name allows an operator character to appear literally in the name. `"MsTeamsProviderEnabled^"` would match the corresponding properties below without pulling them:
 ```json
 [
   { "database_name": "astar-tenant" },
@@ -582,7 +584,7 @@ Escaping a property name allows for the character to appear on the property name
 ]
 ```
 
-Adding a property name after `^` would allow renaming the property `MsTeamsProviderEnabled^` to a new name. For example, `database_name,config[SsoProvidersConfigurations[MsTeamsProviderEnabled^NewPropertyName]]` would result in:
+Adding a property name after `!` renames the pulled property. For example, `database_name,config[SsoProvidersConfigurations[MsTeamsProviderEnabled!NewPropertyName]]` would result in:
 ```json
 [
   { "database_name": "astar-tenant" },
@@ -601,3 +603,5 @@ Adding a property name after `^` would allow renaming the property `MsTeamsProvi
   { "database_name": "swa-tenant" }
 ]
 ```
+
+For relative pulling, given `{ "a": { "b": { "enabled": true } } }`, the filter `a[b[enabled^]]` produces `{ "a": { "enabled": true } }`, while `a[b[enabled^^]]` produces `{ "enabled": true }`. Additional carets also produce `{ "enabled": true }` because a relative pull that extends above the output root is clamped to the root.
