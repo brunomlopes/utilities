@@ -700,7 +700,9 @@ export function JsonVisualizer({
                 array. Nest brackets for deeper direct children, or use *[...] to search descendant
                 levels recursively. Use $[x] to select x only on the root object, or on each direct
                 object item when the root is an array. Filter values with x[id,status=active].
-                Append ^ to pull a property to the root, or ^NewName to pull and rename it.
+                Append ! to pull a property to the root. Use ^ to pull it one object level up,
+                ^^ for two levels, and so on; arrays do not count as levels. Add a name after the
+                operator to rename the pulled property.
               </span>
             </span>
           </div>

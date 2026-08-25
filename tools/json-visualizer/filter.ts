@@ -21,6 +21,7 @@ export interface EqualityFilterClause {
 export interface PullFilterClause {
   type: "pull";
   name: string;
+  pullDepth: "root" | number;
   destinationName?: string;
 }
 
@@ -111,7 +112,12 @@ class FilterParser {
 
     if (this.peek() !== "[") {
       return pull
-        ? { type: "pull", name: pull.name, destinationName: pull.destinationName }
+        ? {
+            type: "pull",
+            name: pull.name,
+            pullDepth: pull.pullDepth,
+            destinationName: pull.destinationName,
+          }
         : { type: "plain", name: parsedName };
     }
 
@@ -130,19 +136,31 @@ class FilterParser {
     return { type: "bracket", name: parsedName, children: this.parseClauseList("]") };
   }
 
-  private parsePullName(name: string): { name: string; destinationName?: string } | null {
-    const firstCaret = name.indexOf("^");
-    if (firstCaret === -1) return null;
-    if (name.indexOf("^", firstCaret + 1) !== -1) {
-      this.fail("Pull selectors may contain only one '^'");
+  private parsePullName(
+    name: string,
+  ): { name: string; pullDepth: "root" | number; destinationName?: string } | null {
+    const firstOperator = name.search(/[!^]/u);
+    if (firstOperator === -1) return null;
+
+    const sourceName = name.slice(0, firstOperator).trim();
+    if (!sourceName) this.fail("Pull selectors require a property name before the pull operator");
+
+    const operator = name[firstOperator];
+    let operatorEnd = firstOperator + 1;
+    let pullDepth: "root" | number = "root";
+    if (operator === "^") {
+      while (name[operatorEnd] === "^") operatorEnd += 1;
+      pullDepth = operatorEnd - firstOperator;
     }
 
-    const sourceName = name.slice(0, firstCaret).trim();
-    const destinationName = name.slice(firstCaret + 1).trim();
-    if (!sourceName) this.fail("Pull selectors require a property name before '^'");
+    const destinationName = name.slice(operatorEnd).trim();
+    if (/[!^]/u.test(destinationName)) {
+      this.fail("Pull destination names cannot contain '!' or '^'");
+    }
 
     return {
       name: sourceName,
+      pullDepth,
       destinationName: destinationName || undefined,
     };
   }
@@ -295,6 +313,7 @@ export function filterJson(value: JsonValue, clauses: FilterClause[]): FilterRes
     pattern: NamePattern;
     recursive: boolean;
     expectedValue?: string;
+    pullDepth?: "root" | number;
     destinationName?: string;
     children?: CompiledClause[];
   }
@@ -309,6 +328,7 @@ export function filterJson(value: JsonValue, clauses: FilterClause[]): FilterRes
       pattern: compileNamePattern(clause.name),
       recursive: clause.type === "bracket" && clause.name === "*",
       expectedValue: clause.type === "equality" ? clause.expectedValue : undefined,
+      pullDepth: clause.type === "pull" ? clause.pullDepth : undefined,
       destinationName: clause.type === "pull" ? clause.destinationName : undefined,
       children: clause.type === "bracket" ? clause.children.map(compileClause) : undefined,
     };
@@ -361,14 +381,14 @@ export function filterJson(value: JsonValue, clauses: FilterClause[]): FilterRes
   function visit(
     current: JsonValue,
     directClauses?: readonly CompiledClause[],
-    inheritedPullTarget?: PullTarget,
+    ancestorTargets: readonly PullTarget[] = [],
     rootItemNumber?: number,
   ): VisitResult {
     if (Array.isArray(current)) {
       const result: JsonValue[] = [];
       let matched = false;
       for (const item of current) {
-        const filtered = visit(item, directClauses, inheritedPullTarget, rootItemNumber);
+        const filtered = visit(item, directClauses, ancestorTargets, rootItemNumber);
         matched ||= filtered.matched;
         if (filtered.retained) result.push(filtered.value);
       }
@@ -378,12 +398,12 @@ export function filterJson(value: JsonValue, clauses: FilterClause[]): FilterRes
     if (!isObject(current)) return { matched: false, retained: false, value: null };
 
     const result: { [key: string]: JsonValue } = {};
-    const ownsPullTarget = inheritedPullTarget === undefined;
-    const pullTarget = inheritedPullTarget ?? {
+    const currentTarget: PullTarget = {
       value: result,
       retained: false,
       itemNumber: rootItemNumber,
     };
+    const pullTargets = [...ancestorTargets, currentTarget];
     let matched = false;
     let retained = false;
     const directEqualityClauses = directClauses?.filter((clause) => clause.type === "equality") ?? [];
@@ -450,6 +470,11 @@ export function filterJson(value: JsonValue, clauses: FilterClause[]): FilterRes
       const pullClauses = matchingClauses.filter((clause) => clause.type === "pull");
       for (const clause of pullClauses) {
         const destinationName = clause.destinationName ?? key;
+        const targetIndex =
+          clause.pullDepth === "root"
+            ? 0
+            : Math.max(0, pullTargets.length - 1 - (clause.pullDepth ?? 0));
+        const pullTarget = pullTargets[targetIndex];
         if (assignFirst(pullTarget, destinationName, child)) {
           pullTarget.retained = true;
         }
@@ -457,12 +482,7 @@ export function filterJson(value: JsonValue, clauses: FilterClause[]): FilterRes
       }
 
       if (matchingClauses.some((clause) => clause.type === "plain")) {
-        if (result === pullTarget.value) {
-          if (assignFirst(pullTarget, key, child)) retained = true;
-        } else {
-          result[key] = child;
-          retained = true;
-        }
+        if (assignFirst(currentTarget, key, child)) retained = true;
         matched = true;
         continue;
       }
@@ -473,24 +493,20 @@ export function filterJson(value: JsonValue, clauses: FilterClause[]): FilterRes
       const filtered = visit(
         child,
         nextDirectClauses.length > 0 ? nextDirectClauses : undefined,
-        pullTarget,
+        pullTargets,
+        rootItemNumber,
       );
       if (filtered.matched) {
         matched = true;
       }
       if (filtered.retained) {
-        if (result === pullTarget.value) {
-          if (assignFirst(pullTarget, key, filtered.value)) retained = true;
-        } else {
-          result[key] = filtered.value;
-          retained = true;
-        }
+        if (assignFirst(currentTarget, key, filtered.value)) retained = true;
       }
     }
 
     return {
       matched,
-      retained: retained || (ownsPullTarget && pullTarget.retained),
+      retained: retained || currentTarget.retained,
       value: result,
     };
   }
@@ -501,9 +517,9 @@ export function filterJson(value: JsonValue, clauses: FilterClause[]): FilterRes
 
     for (const [index, item] of value.entries()) {
       const filtered: VisitResult = isObject(item)
-        ? visit(item, rootClauses.length > 0 ? rootClauses : undefined, undefined, index + 1)
+        ? visit(item, rootClauses.length > 0 ? rootClauses : undefined, [], index + 1)
         : Array.isArray(item) && globalClauses.length > 0
-          ? visit(item, undefined, undefined, index + 1)
+          ? visit(item, undefined, [], index + 1)
           : { matched: false, retained: false, value: null };
 
       if (filtered.retained) result.push(filtered.value);

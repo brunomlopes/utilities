@@ -118,14 +118,23 @@ describe("parseFilter", () => {
   });
 
   it("parses pull selectors, aliases, and wildcard source names", () => {
-    expect(parseFilter("enabled^,setting*^SelectedSetting")).toEqual([
-      { type: "pull", name: "enabled", destinationName: undefined },
-      { type: "pull", name: "setting*", destinationName: "SelectedSetting" },
+    expect(parseFilter("enabled!,setting*!SelectedSetting,nested^^Renamed")).toEqual([
+      { type: "pull", name: "enabled", pullDepth: "root", destinationName: undefined },
+      {
+        type: "pull",
+        name: "setting*",
+        pullDepth: "root",
+        destinationName: "SelectedSetting",
+      },
+      { type: "pull", name: "nested", pullDepth: 2, destinationName: "Renamed" },
     ]);
   });
 
-  it("treats a caret inside a quoted property name literally", () => {
-    expect(parseFilter('"enabled^"')).toEqual([{ type: "plain", name: "enabled^" }]);
+  it("treats pull operators inside quoted property names literally", () => {
+    expect(parseFilter('"enabled^","enabled!"')).toEqual([
+      { type: "plain", name: "enabled^" },
+      { type: "plain", name: "enabled!" },
+    ]);
   });
 
   it.each([
@@ -142,7 +151,9 @@ describe("parseFilter", () => {
     'a="open',
     "outer[$[value]]",
     "^alias",
-    "name^^alias",
+    "!alias",
+    "name!!alias",
+    "name!alias^invalid",
     "name^alias[value]",
     "name^=value",
   ]) (
@@ -504,10 +515,42 @@ describe("filterJson", () => {
       },
     };
 
-    expect(filterJson(input, parseFilter("database_name,config[providers[enabled^]]"))).toEqual({
+    expect(filterJson(input, parseFilter("database_name,config[providers[enabled!]]"))).toEqual({
       matched: true,
       value: { database_name: "tenant", enabled: true },
     });
+  });
+
+  it("pulls properties up by the requested number of object levels and clamps at the root", () => {
+    const input: JsonValue = { a: { b: { enabled: true } } };
+
+    expect(filterJson(input, parseFilter("a[b[enabled^]]")).value).toEqual({
+      a: { enabled: true },
+    });
+    expect(filterJson(input, parseFilter("a[b[enabled^^]]")).value).toEqual({ enabled: true });
+    expect(filterJson(input, parseFilter("a[b[enabled^^^^]]")).value).toEqual({ enabled: true });
+  });
+
+  it("does not count arrays as pull levels", () => {
+    const input: JsonValue = { a: [{ value: 1 }] };
+
+    expect(filterJson(input, parseFilter("a[value^]"))).toEqual({
+      matched: true,
+      value: { value: 1 },
+    });
+  });
+
+  it("reports collisions against the relative ancestor destination", () => {
+    const input: JsonValue = { a: { b: { first: 1, second: 2 } } };
+    const filtered = filterJson(input, parseFilter("a[b[*^value]]"));
+
+    expect(filtered.value).toEqual({ a: { value: 1 } });
+    expect(filtered.errors).toEqual(["Property value would be overwritten with value 2."]);
+    expect(filtered.overwriteErrors?.[0].target).toBe(
+      typeof filtered.value === "object" && filtered.value !== null && !Array.isArray(filtered.value)
+        ? filtered.value.a
+        : undefined,
+    );
   });
 
   it("pulls independently to each direct object item in a root array", () => {
@@ -516,7 +559,7 @@ describe("filterJson", () => {
       { id: 2, nested: { value: "second" } },
     ];
 
-    expect(filterJson(input, parseFilter("id,nested[value^renamed]"))).toEqual({
+    expect(filterJson(input, parseFilter("id,nested[value!renamed]"))).toEqual({
       matched: true,
       value: [
         { id: 1, renamed: "first" },
@@ -533,7 +576,7 @@ describe("filterJson", () => {
       ],
     };
 
-    const filtered = filterJson(input, parseFilter("records[selected*^choice]"));
+    const filtered = filterJson(input, parseFilter("records[selected*!choice]"));
 
     expect(filtered).toMatchObject({
       matched: true,
@@ -570,7 +613,7 @@ describe("filterJson", () => {
       result: "selected later",
     };
 
-    const filtered = filterJson(input, parseFilter("nested[value^result],result"));
+    const filtered = filterJson(input, parseFilter("nested[value!result],result"));
 
     expect(filtered).toMatchObject({
       matched: true,
@@ -592,7 +635,7 @@ describe("filterJson", () => {
       { records: [{ selectedOne: 3 }] },
     ];
 
-    const filtered = filterJson(input, parseFilter("records[selected*^choice]"));
+    const filtered = filterJson(input, parseFilter("records[selected*!choice]"));
 
     expect(filtered.value).toEqual([{ choice: 1 }, { choice: 3 }]);
     expect(filtered.errors).toEqual([
@@ -608,11 +651,11 @@ describe("filterJson", () => {
     );
   });
 
-  it("matches quoted caret property names without pulling them", () => {
-    const input: JsonValue = { nested: { "enabled^": true } };
-    expect(filterJson(input, parseFilter('"enabled^"'))).toEqual({
+  it("matches quoted pull-operator property names without pulling them", () => {
+    const input: JsonValue = { nested: { "enabled^": true, "enabled!": false } };
+    expect(filterJson(input, parseFilter('"enabled^","enabled!"'))).toEqual({
       matched: true,
-      value: { nested: { "enabled^": true } },
+      value: { nested: { "enabled^": true, "enabled!": false } },
     });
   });
 

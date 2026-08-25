@@ -755,7 +755,7 @@ describe("JsonVisualizer", () => {
     render(<JsonVisualizer />);
     update(
       JSON.stringify({ records: [{ selectedOne: 1, selectedTwo: 2 }, { selectedThree: 3 }] }),
-      "records[selected*^choice]",
+      "records[selected*!choice]",
     );
     act(() => vi.advanceTimersByTime(250));
 
@@ -779,7 +779,7 @@ describe("JsonVisualizer", () => {
         },
         { id: 2, source: { choiceOne: { left: 50, right: 60 } } },
       ]),
-      "id,source[choice*^details]",
+      "id,source[choice*!details]",
     );
     act(() => vi.advanceTimersByTime(250));
     fireEvent.click(screen.getByRole("tab", { name: "Table" }));
@@ -892,5 +892,7 @@ describe("JsonVisualizer", () => {
     );
     expect(helpButton).toHaveAttribute("aria-describedby", tooltip.id);
     expect(tooltip).toHaveTextContent("Use a,b for keys anywhere");
+    expect(tooltip).toHaveTextContent("Append ! to pull a property to the root");
+    expect(tooltip).toHaveTextContent("arrays do not count as levels");
   });
 });
