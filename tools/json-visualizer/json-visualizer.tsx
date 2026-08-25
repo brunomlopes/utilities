@@ -775,7 +775,7 @@ export function JsonVisualizer({
             onClick={() => selectOutputView("tree")}
             onKeyDown={handleOutputTabKeyDown}
           >
-            Tree
+            JSON
           </button>
           <button
             ref={tableTabRef}

@@ -279,17 +279,17 @@ describe("JsonVisualizer", () => {
     expect(screen.getByLabelText("Filtered JSON output")).toHaveAttribute("readonly");
   });
 
-  it("shows Tree by default and exposes accessible output tabs", () => {
+  it("shows JSON by default and exposes accessible output tabs", () => {
     render(<JsonVisualizer />);
 
-    const treeTab = screen.getByRole("tab", { name: "Tree" });
+    const treeTab = screen.getByRole("tab", { name: "JSON" });
     const tableTab = screen.getByRole("tab", { name: "Table" });
 
     expect(treeTab).toHaveAttribute("aria-selected", "true");
     expect(treeTab).toHaveAttribute("tabindex", "0");
     expect(tableTab).toHaveAttribute("aria-selected", "false");
     expect(tableTab).toHaveAttribute("tabindex", "-1");
-    expect(screen.getByRole("tabpanel", { name: "Tree" })).toBeVisible();
+    expect(screen.getByRole("tabpanel", { name: "JSON" })).toBeVisible();
     expect(screen.queryByRole("tabpanel", { name: "Table" })).not.toBeInTheDocument();
   });
 
@@ -641,7 +641,7 @@ describe("JsonVisualizer", () => {
 
   it("supports keyboard tab navigation and retains the selected view after evaluation", () => {
     render(<JsonVisualizer />);
-    const treeTab = screen.getByRole("tab", { name: "Tree" });
+    const treeTab = screen.getByRole("tab", { name: "JSON" });
 
     fireEvent.keyDown(treeTab, { key: "ArrowRight" });
     expect(screen.getByRole("tab", { name: "Table" })).toHaveFocus();
@@ -840,7 +840,7 @@ describe("JsonVisualizer", () => {
       "name\tscore\nAlpha\t2\nBeta\t10",
     );
 
-    fireEvent.click(screen.getByRole("tab", { name: "Tree" }));
+    fireEvent.click(screen.getByRole("tab", { name: "JSON" }));
     expect(screen.getByRole("button", { name: "Copy JSON" })).toBeInTheDocument();
   });
 
