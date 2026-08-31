@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { cleanHtml, HtmlFilterSyntaxError, parseHtmlFilter } from "./clean-html";
+import { formatHtml } from "./format-html";
 
 interface Evaluation {
   output: string;
@@ -9,7 +10,7 @@ interface Evaluation {
   ruleCount: number;
 }
 
-function evaluate(html: string, filterText: string): Evaluation {
+function evaluate(html: string, filterText: string, shouldFormatOutput: boolean): Evaluation {
   try {
     const filter = parseHtmlFilter(filterText);
     const attributeRuleCount = [...filter.attributesByTag.values()].reduce(
@@ -17,8 +18,9 @@ function evaluate(html: string, filterText: string): Evaluation {
       0,
     );
 
+    const filteredHtml = cleanHtml(html, filterText);
     return {
-      output: cleanHtml(html, filterText),
+      output: shouldFormatOutput ? formatHtml(filteredHtml) : filteredHtml,
       error: null,
       ruleCount: filter.removedTags.size + attributeRuleCount,
     };
@@ -34,8 +36,12 @@ function evaluate(html: string, filterText: string): Evaluation {
 export function HtmlCleaner() {
   const [html, setHtml] = useState("");
   const [filter, setFilter] = useState("");
+  const [shouldFormatOutput, setShouldFormatOutput] = useState(true);
   const [copyStatus, setCopyStatus] = useState("");
-  const evaluation = useMemo(() => evaluate(html, filter), [html, filter]);
+  const evaluation = useMemo(
+    () => evaluate(html, filter, shouldFormatOutput),
+    [html, filter, shouldFormatOutput],
+  );
 
   async function pasteInput() {
     try {
@@ -123,14 +129,27 @@ export function HtmlCleaner() {
             <span className="html-cleaner-step">02</span>
             <h2>Cleaned HTML</h2>
           </div>
-          <button
-            type="button"
-            className="html-primary-button"
-            onClick={copyOutput}
-            disabled={!evaluation.output || Boolean(evaluation.error)}
-          >
-            Copy output
-          </button>
+          <div className="html-output-actions">
+            <label className="html-format-toggle">
+              <input
+                type="checkbox"
+                checked={shouldFormatOutput}
+                onChange={(event) => {
+                  setShouldFormatOutput(event.target.checked);
+                  setCopyStatus("");
+                }}
+              />
+              Format output
+            </label>
+            <button
+              type="button"
+              className="html-primary-button"
+              onClick={copyOutput}
+              disabled={!evaluation.output || Boolean(evaluation.error)}
+            >
+              Copy output
+            </button>
+          </div>
         </div>
         <label className="visually-hidden" htmlFor="html-cleaner-output">
           Cleaned HTML output

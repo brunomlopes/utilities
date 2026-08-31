@@ -26,7 +26,7 @@ describe("HtmlCleaner", () => {
     });
 
     expect((screen.getByLabelText("Cleaned HTML output") as HTMLTextAreaElement).value).toBe(
-      '<main><p id="copy">Hello</p></main>',
+      '<main>\n    <p id="copy">Hello</p>\n</main>',
     );
     expect(screen.getByText("2 filter rules applied")).not.toBeNull();
   });
@@ -56,7 +56,26 @@ describe("HtmlCleaner", () => {
       "<button disabled>Save</button>",
     );
     expect((screen.getByLabelText("Cleaned HTML output") as HTMLTextAreaElement).value).toBe(
-      "<button disabled>Save</button>",
+      '<button disabled="">Save</button>',
+    );
+  });
+
+  it("formats output by default and can return to compact output", () => {
+    render(<HtmlCleaner />);
+    const formatToggle = screen.getByRole("checkbox", { name: "Format output" });
+    fireEvent.change(screen.getByLabelText("HTML input"), {
+      target: { value: "<main><section><p>Hello</p></section></main>" },
+    });
+
+    expect((formatToggle as HTMLInputElement).checked).toBe(true);
+    expect((screen.getByLabelText("Cleaned HTML output") as HTMLTextAreaElement).value).toBe(
+      "<main>\n    <section>\n        <p>Hello</p>\n    </section>\n</main>",
+    );
+
+    fireEvent.click(formatToggle);
+
+    expect((screen.getByLabelText("Cleaned HTML output") as HTMLTextAreaElement).value).toBe(
+      "<main><section><p>Hello</p></section></main>",
     );
   });
 

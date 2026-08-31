@@ -6,14 +6,17 @@ The UI and UX should be similar to the one used on the json-visualizer tool.
 
 This should be a client side application in react, using the current best practices.
 
+## Features
+
+Feature.1- Allow filtering html from input into output based on a filter
+Feature.2- Output can be re-formatted, based on a checkbox marked "Format output". This checkbox is set by default. When this is set, the output, after filtering, is re-formatted using 4 spaces per tab.
+
 ## Filter Features
 
 Filter.1 - There is a filter to exclude html tags, separated by comma (,).
 Filter.1.1 - A tag can be just the name, or the name as an html tag (<div>)
 Filter.2 - There is a filter to exclude html attributes on each tag, separated by comma (,), as part of each tag
 Filter.2.1 - To remove a tag from all nodes, use * as the tag name
-
-
 
 ### Filter examples
 

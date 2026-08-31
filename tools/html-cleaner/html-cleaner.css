@@ -100,10 +100,31 @@
 }
 
 .html-cleaner-heading > div,
-.html-cleaner-actions {
+.html-cleaner-actions,
+.html-output-actions,
+.html-format-toggle {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.html-format-toggle {
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.68rem;
+  white-space: nowrap;
+}
+
+.html-format-toggle input {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.html-format-toggle input:focus-visible {
+  outline: 3px solid rgb(196 75 50 / 20%);
+  outline-offset: 2px;
 }
 
 .html-cleaner-shell h2,
