@@ -21,6 +21,43 @@ describe("formatHtml", () => {
     );
   });
 
+  it("collapses ordinary whitespace while preserving inline word boundaries", () => {
+    expect(
+      formatHtml(
+        [
+          "<div>",
+          "    Hello      <strong>world</strong> !",
+          "",
+          "    <p>  A   short   paragraph.  </p>",
+          "</div>",
+        ].join("\n"),
+      ),
+    ).toBe(
+      [
+        "<div>",
+        "    Hello <strong>world</strong> !",
+        "    <p>A short paragraph.</p>",
+        "</div>",
+      ].join("\n"),
+    );
+  });
+
+  it("moves meaningful whitespace outside inline tags", () => {
+    expect(formatHtml("<p>Hello<strong>   world   </strong>again</p>")).toBe(
+      "<p>Hello <strong>world</strong> again</p>",
+    );
+  });
+
+  it("does not collapse non-breaking spaces", () => {
+    expect(formatHtml("<p>Hello&nbsp;&nbsp;world</p>")).toBe("<p>Hello  world</p>");
+  });
+
+  it("preserves greater-than signs inside attributes", () => {
+    expect(formatHtml('<div data-comparison="a>b"><p>Content</p></div>')).toBe(
+      '<div data-comparison="a>b">\n    <p>Content</p>\n</div>',
+    );
+  });
+
   it.each([
     ["pre", "  first\n    second"],
     ["textarea", "first\n  second"],

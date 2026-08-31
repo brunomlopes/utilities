@@ -1,4 +1,5 @@
 const INDENT = "    ";
+const HTML_WHITESPACE = /[\t\n\f\r ]+/g;
 const WHITESPACE_SENSITIVE_TAGS = new Set(["pre", "textarea", "script", "style"]);
 const INLINE_TAGS = new Set([
   "a",
@@ -51,37 +52,118 @@ const VOID_TAGS = new Set([
   "wbr",
 ]);
 
+interface InlineSegment {
+  html: string;
+  leadingSpace: boolean;
+  trailingSpace: boolean;
+}
+
 function indentation(level: number) {
   return INDENT.repeat(level);
 }
 
 function openingTag(element: Element) {
   const outerHtml = (element.cloneNode(false) as Element).outerHTML;
-  return outerHtml.slice(0, outerHtml.indexOf(">") + 1);
+  let quote: '"' | "'" | null = null;
+
+  for (let index = 1; index < outerHtml.length; index += 1) {
+    const character = outerHtml[index];
+    if (quote) {
+      if (character === quote) quote = null;
+    } else if (character === '"' || character === "'") {
+      quote = character;
+    } else if (character === ">") {
+      return outerHtml.slice(0, index + 1);
+    }
+  }
+
+  return outerHtml;
 }
 
-function hasMeaningfulText(nodes: readonly ChildNode[]) {
-  return nodes.some((node) => node.nodeType === Node.TEXT_NODE && node.textContent?.trim());
+function escapeText(text: string) {
+  return text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
 }
 
-function shouldKeepElementInline(element: Element, childNodes: readonly ChildNode[]) {
-  const childElements = childNodes.filter((node): node is Element => node.nodeType === Node.ELEMENT_NODE);
+function textSegment(text: string): InlineSegment {
+  const normalized = text.replace(HTML_WHITESPACE, " ");
+  return {
+    html: escapeText(normalized.replace(/^ /, "").replace(/ $/, "")),
+    leadingSpace: normalized.startsWith(" "),
+    trailingSpace: normalized.endsWith(" "),
+  };
+}
+
+function isInlineContent(node: ChildNode) {
   return (
-    hasMeaningfulText(childNodes) ||
-    (childElements.length > 0 && childElements.every((child) => INLINE_TAGS.has(child.tagName.toLowerCase())))
+    node.nodeType === Node.TEXT_NODE ||
+    node.nodeType === Node.COMMENT_NODE ||
+    (node.nodeType === Node.ELEMENT_NODE &&
+      INLINE_TAGS.has((node as Element).tagName.toLowerCase()))
   );
+}
+
+function serializeInlineNode(node: ChildNode): InlineSegment {
+  if (node.nodeType === Node.TEXT_NODE) return textSegment(node.textContent ?? "");
+
+  if (node.nodeType === Node.COMMENT_NODE) {
+    return {
+      html: `<!--${(node as Comment).data}-->`,
+      leadingSpace: false,
+      trailingSpace: false,
+    };
+  }
+
+  const element = node as Element;
+  const tagName = element.tagName.toLowerCase();
+  if (WHITESPACE_SENSITIVE_TAGS.has(tagName)) {
+    return { html: element.outerHTML, leadingSpace: false, trailingSpace: false };
+  }
+  if (VOID_TAGS.has(tagName)) {
+    return { html: element.outerHTML, leadingSpace: false, trailingSpace: false };
+  }
+
+  const content = serializeInlineSequence(Array.from(element.childNodes));
+  return {
+    html: `${openingTag(element)}${content.html}</${tagName}>`,
+    leadingSpace: content.leadingSpace,
+    trailingSpace: content.trailingSpace,
+  };
+}
+
+function serializeInlineSequence(nodes: readonly ChildNode[]): InlineSegment {
+  let html = "";
+  let hasContent = false;
+  let leadingSpace = false;
+  let pendingSpace = false;
+
+  nodes.forEach((node) => {
+    const segment = serializeInlineNode(node);
+    const segmentHasWhitespace = segment.leadingSpace || segment.trailingSpace;
+
+    if (!segment.html) {
+      if (hasContent) pendingSpace ||= segmentHasWhitespace;
+      else leadingSpace ||= segmentHasWhitespace;
+      return;
+    }
+
+    const needsSpace = pendingSpace || segment.leadingSpace;
+    if (hasContent && needsSpace) html += " ";
+    else if (!hasContent) leadingSpace ||= needsSpace;
+
+    html += segment.html;
+    hasContent = true;
+    pendingSpace = segment.trailingSpace;
+  });
+
+  return { html, leadingSpace, trailingSpace: pendingSpace };
 }
 
 function formatNode(node: ChildNode, level: number): string | null {
   const prefix = indentation(level);
 
-  if (node.nodeType === Node.COMMENT_NODE) {
-    return `${prefix}<!--${(node as Comment).data}-->`;
-  }
-
-  if (node.nodeType === Node.TEXT_NODE) {
-    const text = node.textContent ?? "";
-    return text.trim() ? `${prefix}${text.trim()}` : null;
+  if (isInlineContent(node)) {
+    const inline = serializeInlineSequence([node]);
+    return inline.html ? `${prefix}${inline.html}` : null;
   }
 
   if (node.nodeType !== Node.ELEMENT_NODE) return null;
@@ -92,13 +174,33 @@ function formatNode(node: ChildNode, level: number): string | null {
   if (VOID_TAGS.has(tagName)) return `${prefix}${element.outerHTML}`;
 
   const childNodes = Array.from(element.childNodes);
-  if (childNodes.length === 0 || shouldKeepElementInline(element, childNodes)) {
-    return `${prefix}${element.outerHTML}`;
+  if (childNodes.length === 0) return `${prefix}${openingTag(element)}</${tagName}>`;
+
+  if (childNodes.every(isInlineContent)) {
+    const inline = serializeInlineSequence(childNodes);
+    return `${prefix}${openingTag(element)}${inline.html}</${tagName}>`;
   }
 
-  const children = childNodes
-    .map((child) => formatNode(child, level + 1))
-    .filter((child): child is string => child !== null);
+  const children: string[] = [];
+  let inlineBuffer: ChildNode[] = [];
+
+  function flushInlineBuffer() {
+    const inline = serializeInlineSequence(inlineBuffer);
+    if (inline.html) children.push(`${indentation(level + 1)}${inline.html}`);
+    inlineBuffer = [];
+  }
+
+  childNodes.forEach((child) => {
+    if (isInlineContent(child)) {
+      inlineBuffer.push(child);
+      return;
+    }
+
+    flushInlineBuffer();
+    const formattedChild = formatNode(child, level + 1);
+    if (formattedChild) children.push(formattedChild);
+  });
+  flushInlineBuffer();
 
   if (children.length === 0) return `${prefix}${openingTag(element)}</${tagName}>`;
   return `${prefix}${openingTag(element)}\n${children.join("\n")}\n${prefix}</${tagName}>`;

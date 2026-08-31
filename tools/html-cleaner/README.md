@@ -4,4 +4,4 @@ A browser-only utility for removing selected nodes or attributes from HTML. Ente
 
 All parsing and filtering happens locally in the browser.
 
-Output formatting is enabled by default and uses four spaces per indentation level. Disable **Format output** to keep the browser serializer's compact output. Content inside `pre`, `textarea`, `script`, and `style` elements is not reformatted.
+Output formatting is enabled by default, uses four spaces per indentation level, and collapses ordinary whitespace while preserving meaningful spaces around inline elements. Disable **Format output** to keep the browser serializer's compact output. Content inside `pre`, `textarea`, `script`, and `style` elements is not reformatted.
