@@ -1,14 +1,41 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { cleanHtml, parseExcludedAttributes } from "./clean-html";
+import { cleanHtml, HtmlFilterSyntaxError, parseHtmlFilter } from "./clean-html";
+
+interface Evaluation {
+  output: string;
+  error: string | null;
+  ruleCount: number;
+}
+
+function evaluate(html: string, filterText: string): Evaluation {
+  try {
+    const filter = parseHtmlFilter(filterText);
+    const attributeRuleCount = [...filter.attributesByTag.values()].reduce(
+      (total, attributes) => total + attributes.size,
+      0,
+    );
+
+    return {
+      output: cleanHtml(html, filterText),
+      error: null,
+      ruleCount: filter.removedTags.size + attributeRuleCount,
+    };
+  } catch (error) {
+    return {
+      output: html,
+      error: error instanceof HtmlFilterSyntaxError ? error.message : "The filter is invalid.",
+      ruleCount: 0,
+    };
+  }
+}
 
 export function HtmlCleaner() {
   const [html, setHtml] = useState("");
   const [filter, setFilter] = useState("");
   const [copyStatus, setCopyStatus] = useState("");
-  const output = useMemo(() => cleanHtml(html, filter), [html, filter]);
-  const excludedCount = parseExcludedAttributes(filter).length;
+  const evaluation = useMemo(() => evaluate(html, filter), [html, filter]);
 
   async function pasteInput() {
     try {
@@ -21,7 +48,7 @@ export function HtmlCleaner() {
 
   async function copyOutput() {
     try {
-      await navigator.clipboard.writeText(output);
+      await navigator.clipboard.writeText(evaluation.output);
       setCopyStatus("Copied to clipboard.");
     } catch {
       setCopyStatus("Could not copy. Select the output and copy it manually.");
@@ -61,26 +88,34 @@ export function HtmlCleaner() {
 
       <div className="html-cleaner-pane html-result-pane">
         <div className="html-filter-block">
-          <label htmlFor="html-attribute-filter">Exclude attributes</label>
+          <label htmlFor="html-filter">Filter</label>
           <p id="html-filter-help">
-            Enter attribute names separated by commas. Matching is case-insensitive.
+            Remove tags with <code>meta,table</code>, or attributes with{" "}
+            <code>&lt;table style,class&gt;</code>. Use <code>*</code> to target every tag.
           </p>
           <input
-            id="html-attribute-filter"
+            id="html-filter"
             className="html-filter-input"
             value={filter}
             onChange={(event) => {
               setFilter(event.target.value);
               setCopyStatus("");
             }}
-            placeholder="style,class"
-            aria-describedby="html-filter-help html-filter-count"
+            placeholder="meta,<table style,class>"
+            aria-describedby={`html-filter-help ${evaluation.error ? "html-filter-error" : "html-filter-count"}`}
+            aria-invalid={evaluation.error ? "true" : undefined}
           />
-          <p id="html-filter-count" className="html-filter-count" aria-live="polite">
-            {excludedCount === 0
-              ? "No attributes excluded"
-              : `${excludedCount} attribute${excludedCount === 1 ? "" : "s"} excluded`}
-          </p>
+          {evaluation.error ? (
+            <p id="html-filter-error" className="html-filter-error" role="alert">
+              {evaluation.error}
+            </p>
+          ) : (
+            <p id="html-filter-count" className="html-filter-count" aria-live="polite">
+              {evaluation.ruleCount === 0
+                ? "No filters applied"
+                : `${evaluation.ruleCount} filter rule${evaluation.ruleCount === 1 ? "" : "s"} applied`}
+            </p>
+          )}
         </div>
 
         <div className="html-cleaner-heading html-output-heading">
@@ -92,7 +127,7 @@ export function HtmlCleaner() {
             type="button"
             className="html-primary-button"
             onClick={copyOutput}
-            disabled={!output}
+            disabled={!evaluation.output || Boolean(evaluation.error)}
           >
             Copy output
           </button>
@@ -103,7 +138,7 @@ export function HtmlCleaner() {
         <textarea
           id="html-cleaner-output"
           className="html-code-area html-output-area"
-          value={output}
+          value={evaluation.output}
           placeholder="Cleaned HTML appears here"
           readOnly
           spellCheck={false}

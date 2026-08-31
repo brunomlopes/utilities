@@ -4,7 +4,7 @@ import { HtmlCleaner } from "@/tools/html-cleaner/html-cleaner";
 
 export const metadata: Metadata = {
   title: "HTML Cleaner",
-  description: "Remove selected HTML attributes locally in your browser.",
+  description: "Remove selected HTML nodes and attributes locally in your browser.",
 };
 
 export default function HtmlCleanerPage() {
@@ -18,8 +18,8 @@ export default function HtmlCleanerPage() {
           <h1>HTML Cleaner</h1>
         </div>
         <p className="html-cleaner-hero-copy">
-          Paste HTML, list the attributes to remove, and copy the cleaned markup. Your data never
-          leaves this tab.
+          Paste HTML, choose the nodes and attributes to remove, and copy the cleaned markup. Your
+          data never leaves this tab.
         </p>
       </header>
       <HtmlCleaner />

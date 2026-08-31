@@ -24,7 +24,7 @@ export const utilities = [
     slug: "html-cleaner",
     title: "HTML Cleaner",
     description:
-      "Remove selected attributes from HTML locally in your browser and copy the cleaned markup.",
+      "Remove selected nodes and attributes from HTML locally in your browser and copy the cleaned markup.",
     href: "/html-cleaner",
   },
 ] as const satisfies readonly ToolDefinition[];

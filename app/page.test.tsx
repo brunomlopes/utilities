@@ -23,6 +23,17 @@ describe("Utilities homepage", () => {
     expect(
       screen.getByText(/Convert pasted numbers between Excel and Google Sheets cultures/i),
     ).toBeInTheDocument();
-    expect(screen.getAllByText("02")).toHaveLength(2);
+    expect(screen.getByText("02")).toBeInTheDocument();
+  });
+
+  it("lists HTML Cleaner with its description and route", () => {
+    render(<Home />);
+
+    const link = screen.getByRole("link", { name: /HTML Cleaner/i });
+    expect(link).toHaveAttribute("href", "/html-cleaner");
+    expect(
+      screen.getByText(/Remove selected nodes and attributes from HTML locally in your browser/i),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText("03")).toHaveLength(2);
   });
 });

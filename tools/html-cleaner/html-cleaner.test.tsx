@@ -21,14 +21,14 @@ describe("HtmlCleaner", () => {
     fireEvent.change(screen.getByLabelText("HTML input"), {
       target: { value: '<main class="page"><p style="color:red" id="copy">Hello</p></main>' },
     });
-    fireEvent.change(screen.getByLabelText("Exclude attributes"), {
-      target: { value: "style, class" },
+    fireEvent.change(screen.getByLabelText("Filter"), {
+      target: { value: "<* style,class>" },
     });
 
     expect((screen.getByLabelText("Cleaned HTML output") as HTMLTextAreaElement).value).toBe(
       '<main><p id="copy">Hello</p></main>',
     );
-    expect(screen.getByText("2 attributes excluded")).not.toBeNull();
+    expect(screen.getByText("2 filter rules applied")).not.toBeNull();
   });
 
   it("copies cleaned HTML", async () => {
@@ -36,8 +36,8 @@ describe("HtmlCleaner", () => {
     fireEvent.change(screen.getByLabelText("HTML input"), {
       target: { value: '<div class="card">Hello</div>' },
     });
-    fireEvent.change(screen.getByLabelText("Exclude attributes"), {
-      target: { value: "class" },
+    fireEvent.change(screen.getByLabelText("Filter"), {
+      target: { value: "<* class>" },
     });
 
     await act(async () => screen.getByRole("button", { name: "Copy output" }).click());
@@ -57,6 +57,22 @@ describe("HtmlCleaner", () => {
     );
     expect((screen.getByLabelText("Cleaned HTML output") as HTMLTextAreaElement).value).toBe(
       "<button disabled>Save</button>",
+    );
+  });
+
+  it("shows invalid filter errors and leaves the HTML unchanged", () => {
+    render(<HtmlCleaner />);
+    const html = '<div class="card"><p>Hello</p></div>';
+    fireEvent.change(screen.getByLabelText("HTML input"), { target: { value: html } });
+    fireEvent.change(screen.getByLabelText("Filter"), {
+      target: { value: "div,<* class" },
+    });
+
+    expect(screen.getByRole("alert").textContent).toContain("Invalid filter");
+    expect(screen.getByLabelText("Filter").getAttribute("aria-invalid")).toBe("true");
+    expect((screen.getByLabelText("Cleaned HTML output") as HTMLTextAreaElement).value).toBe(html);
+    expect((screen.getByRole("button", { name: "Copy output" }) as HTMLButtonElement).disabled).toBe(
+      true,
     );
   });
 });
