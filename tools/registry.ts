@@ -20,4 +20,11 @@ export const utilities = [
       "Convert pasted numbers between Excel and Google Sheets cultures while keeping spreadsheet data in your browser.",
     href: "/excel-sheets-interchange",
   },
+  {
+    slug: "html-cleaner",
+    title: "HTML Cleaner",
+    description:
+      "Remove selected attributes from HTML locally in your browser and copy the cleaned markup.",
+    href: "/html-cleaner",
+  },
 ] as const satisfies readonly ToolDefinition[];
