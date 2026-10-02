@@ -34,6 +34,12 @@ describe("Utilities homepage", () => {
     expect(
       screen.getByText(/Remove selected nodes and attributes from HTML locally in your browser/i),
     ).toBeInTheDocument();
-    expect(screen.getAllByText("03")).toHaveLength(2);
+    expect(screen.getByText("03")).toBeInTheDocument();
+  });
+
+  it("lists Certificate Inspector and shows the updated tool count", () => {
+    render(<Home />);
+    expect(screen.getByRole("link", { name: /Certificate Inspector/i })).toHaveAttribute("href", "/certificate-inspector");
+    expect(screen.getAllByText("04")).toHaveLength(2);
   });
 });

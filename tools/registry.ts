@@ -27,4 +27,11 @@ export const utilities = [
       "Remove selected nodes and attributes from HTML locally in your browser and copy the cleaned markup.",
     href: "/html-cleaner",
   },
+  {
+    slug: "certificate-inspector",
+    title: "Certificate Inspector",
+    description:
+      "Inspect PKI certificates, PEM/DER files, and password-protected PKCS#12 bundles locally, with private-key metadata only.",
+    href: "/certificate-inspector",
+  },
 ] as const satisfies readonly ToolDefinition[];

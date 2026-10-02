@@ -20,6 +20,8 @@ npm run build
 
 ## Utilities
 
+- [Certificate Inspector](tools/certificate-inspector/README.md) — inspect PEM/DER certificates and encrypted PKCS#12 bundles, with private-key metadata only.
+
 - [Excel–Sheets Interchange](tools/excel-sheets-interchange/README.md) — convert pasted spreadsheet numbers between English and Portuguese cultures.
 
 - [JSON Visualizer](tools/json-visualizer/README.md) — filter JSON by property name while preserving matching structure.
