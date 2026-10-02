@@ -6,7 +6,7 @@ Open `/certificate-inspector` from the Utilities homepage to inspect PKI certifi
 
 1. Paste a PEM certificate or bundle, or select local `.pem`, `.crt`, `.cer`, `.der`, `.p12`, or `.pfx` files. You can select PEM private-key files alongside certificates, or paste a certificate and its key together. All certificates in a bundle are reported.
 2. Enter the password if a private key or PKCS#12 bundle is encrypted. Leave it empty for unencrypted inputs or empty-password bundles. One password applies to all inputs in an inspection.
-3. Select **Inspect certificate**, then **Copy report** to copy the details. Use **Clear all** to remove inputs, selected files, password, and report from the tool's state.
+3. Inspection starts automatically when PEM input changes or files are selected. Password changes trigger a new inspection after one second without further edits, including when a password is pasted. **Inspect certificate** is also available to retry immediately. Select **Copy report** to copy the details. Use **Clear all** to remove inputs, selected files, password, and report from the tool's state.
 
 Maximum input sizes: 5 MiB each, 20 MiB combined, and 20 selected files. Serve over HTTPS or localhost for Web Crypto and clipboard support. If copying fails, select the report and copy manually.
 

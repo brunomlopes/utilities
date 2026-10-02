@@ -30,7 +30,7 @@ For each private key, show only an allowlist of algorithm, RSA size/public expon
 
 ## Interaction and privacy
 
-Use the existing suite's two-pane visual style, stacking on narrow screens. Provide explicit Inspect, Copy report, and Clear all actions, labeled controls, a masked password field, busy feedback, and accessible errors/status. Editing input invalidates the previous report. Clearing input removes selected file references, text, password, results, and status; pending results cannot restore cleared content.
+Use the existing suite's two-pane visual style, stacking on narrow screens. Inspect automatically when PEM input changes (including paste) or files are selected. Debounce password edits/pastes for one second after the latest change, then inspect using the latest inputs. Do not inspect empty certificate input. Retain explicit Inspect for an immediate retry, Copy report, and Clear all actions, labeled controls, a masked password field, busy/debounce feedback, and accessible errors/status. Editing input invalidates the previous report. New certificate input or an explicit retry cancels any pending password timer. Clearing input or unmounting cancels pending timers and invalidates in-flight results; pending results cannot restore cleared content.
 
 Do not transmit, log, or persist certificate inputs, keys, passwords, or reports. Hold data only in tab memory. Do not claim guaranteed memory erasure in a garbage-collected browser. Copy only the generated report, on user action.
 
