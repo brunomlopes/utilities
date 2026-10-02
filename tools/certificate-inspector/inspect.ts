@@ -158,8 +158,18 @@ export async function inspectCertificates(inputs: InspectionInput[], password = 
   const addCert = (data: ArrayBuffer) => certificates.push({ cert: new Certificate({ schema: schema(data) }), data });
   const addP12 = (data: ArrayBuffer) => {
     try {
-      const pfx = forge.asn1.fromDer(binary(data));
-      const p12 = forge.pkcs12.pkcs12FromAsn1(pfx, true, password);
+      const encoded = binary(data);
+      const pfx = forge.asn1.fromDer(encoded);
+      let p12: forge.pkcs12.Pkcs12Pfx;
+      try {
+        p12 = forge.pkcs12.pkcs12FromAsn1(pfx, true, password);
+      } catch (error) {
+        if (password !== "") throw error;
+        // PKCS#12 distinguishes an empty password from an absent password.
+        // Reparse for the absent-password attempt because Forge can mutate ASN.1.
+        // Both attempts still verify any integrity MAC and decrypt normally.
+        p12 = forge.pkcs12.pkcs12FromAsn1(forge.asn1.fromDer(encoded), true, undefined);
+      }
       for (const safe of p12.safeContents) for (const bag of safe.safeBags) {
         if (bag.type === forge.pki.oids.certBag) {
           const value = bag.asn1 ?? (bag.cert ? forge.pki.certificateToAsn1(bag.cert) : undefined);

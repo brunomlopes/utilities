@@ -84,6 +84,22 @@ describe("certificate inspection", () => {
     const p12 = forge.pkcs12.toPkcs12Asn1(pair.privateKey, cert, "", { algorithm: "aes256" });
     expect(await inspectCertificates([{ name: "unknown.bin", data: der(forge.asn1.toDer(p12).getBytes()) }])).toContain("Certificate match: Certificate 1");
   });
+  it("supports absent-password PKCS#12 without disabling integrity verification", async () => {
+    const p12 = forge.pkcs12.toPkcs12Asn1(pair.privateKey, cert, null, { algorithm: "3des" });
+    const encoded = forge.asn1.toDer(p12).getBytes();
+    // The empty-string encoding fails even though this is a valid passwordless bundle.
+    expect(() => forge.pkcs12.pkcs12FromAsn1(forge.asn1.fromDer(encoded), true, "")).toThrow("MAC could not be verified");
+    const data = der(encoded);
+    const output = await inspectCertificates([{ name: "passwordless.pfx", data }]);
+    expect(output).toContain("CN=example.test");
+    expect(output).toContain("Certificate match: Certificate 1");
+    expect(output).not.toContain("no integrity MAC");
+    // An explicit nonempty password must not fall back to passwordless opening.
+    await expect(inspectCertificates([{ name: "passwordless.pfx", data }], "wrong")).rejects.toThrow("Check the password");
+    const damaged = Uint8Array.from(new Uint8Array(data));
+    damaged[damaged.length - 25] ^= 1;
+    await expect(inspectCertificates([{ name: "damaged.pfx", data: damaged.buffer }])).rejects.toThrow();
+  });
   it.each([false, true])("decrypts encrypted PEM RSA keys (legacy=%s)", async legacy => {
     const encrypted = forge.pki.encryptRsaPrivateKey(pair.privateKey, "secret password", { algorithm: "aes256", legacy });
     const inputs = [{ name: "cert", data: certPem + encrypted }];

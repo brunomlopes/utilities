@@ -10,7 +10,7 @@ Provide `/certificate-inspector`, registered in the Utilities catalog, as a clie
 - Accept multiple local files: PEM certificates/bundles, binary DER X.509 certificates, and PKCS#12 `.p12`/`.pfx` bundles. PEM key files can accompany certificate files.
 - Recognize certificate and PKCS#12 binary encodings; `.p12`/`.pfx` extensions select PKCS#12 directly.
 - Support PKCS#1 RSA, SEC1 named-curve EC, and PKCS#8 private keys; encrypted PKCS#8 and legacy encrypted RSA PEM use the entered password.
-- Support PKCS#12 passwords, including the empty password, and common PBES2/AES and legacy 3DES/RC2 encryption supported by Forge. Verify a bundle's integrity MAC when present; disclose its absence.
+- Support PKCS#12 passwords, including empty and absent passwords, and common PBES2/AES and legacy 3DES/RC2 encryption supported by Forge. With a blank password field, try the empty-string encoding first, then the absent-password encoding if parsing fails. With a nonempty field, use only the supplied password. Verify a bundle's integrity MAC when present in every attempt; disclose its absence.
 - A single password applies to all selected inputs. Files needing different passwords must be inspected separately.
 - Require at least one certificate. Reject unsupported PEM blocks, malformed/truncated inputs, wrong passwords, and unsupported encryption with an accessible error; never show partial results as a successful inspection.
 - Limit each input to 5 MiB, combined inputs to 20 MiB, and selected files to 20.
