@@ -7,7 +7,7 @@ const item: ExceptionDetails = { id: "1", outerId: "0", severityLevel: "Error", 
 afterEach(() => vi.unstubAllGlobals());
 
 describe("Jira exports", () => {
-  it("indents rich-text headings and tables using relationship depth, including siblings and out-of-order parents", () => {
+  it("exports flat rich-text headings and tables while preserving relationship labels", () => {
     const items = [
       { ...item, id: "3", outerId: "2" },
       { ...item, id: "1", outerId: "0" },
@@ -18,18 +18,13 @@ describe("Jira exports", () => {
     const document = new DOMParser().parseFromString(toRichText(items), "text/html");
     const headings = document.querySelectorAll("h3");
     const tables = document.querySelectorAll("table");
-    [2, 0, 1, 1, 0].forEach((depth, index) => {
+    expect(document.querySelector("blockquote")).toBeNull();
+    expect(headings).toHaveLength(items.length);
+    expect(tables).toHaveLength(items.length);
+    items.forEach((_, index) => {
       expect(headings[index].textContent).toBe(`Exception ${index + 1} (id: ${items[index].id} → outerId: ${items[index].outerId})`);
-      expect(headings[index].parentElement).toBe(tables[index].parentElement);
-      let ancestor = headings[index].parentElement;
-      let guides = 0;
-      while (ancestor?.tagName === "BLOCKQUOTE") {
-        expect(ancestor.style.borderLeftWidth).toBe("2px");
-        expect(ancestor.style.paddingLeft).toBe("14px");
-        guides += 1;
-        ancestor = ancestor.parentElement;
-      }
-      expect(guides).toBe(depth);
+      expect(headings[index].parentElement).toBe(document.body);
+      expect(tables[index].parentElement).toBe(document.body);
     });
   });
 

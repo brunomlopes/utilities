@@ -1,5 +1,5 @@
 import { formatStack, type ExceptionDetails } from "./parse";
-import { exceptionDepths, exceptionLabel } from "./hierarchy";
+import { exceptionLabel } from "./hierarchy";
 
 const fields = ["id", "outerId", "severityLevel", "type"] as const;
 const stack = (item: ExceptionDetails) => formatStack(item.parsedStack) || "No stack frames available.";
@@ -17,11 +17,9 @@ export function toPlainText(items: ExceptionDetails[]): string {
 }
 
 export function toRichText(items: ExceptionDetails[]): string {
-  const depths = exceptionDepths(items);
-  const guide = '<blockquote style="margin:0;border-left:2px solid #385f57;padding:0 0 0 14px">';
   return items.map((item, index) => {
     const content = `<h3>${escapeHtml(exceptionLabel(item, index))}</h3><table border="1" style="border-collapse:collapse;width:100%"><tbody><tr>${fields.map((field) => `<td><strong>${field}</strong><br>${escapeHtml(item[field])}</td>`).join("")}</tr><tr><td colspan="4"><strong>message</strong><p>${escapeHtml(item.message).replace(/\r\n|\r|\n/g, "<br>")}</p></td></tr><tr><td colspan="4"><strong>parsedStack</strong><pre>${escapeHtml(stack(item))}</pre></td></tr></tbody></table>`;
-    return guide.repeat(depths[index]) + content + "</blockquote>".repeat(depths[index]);
+    return content;
   }).join("<p><br></p>");
 }
 
