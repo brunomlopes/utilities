@@ -5,7 +5,12 @@ Open **App Insights Stack Parser** from the Utilities homepage or visit `/app-in
 1. Copy the JSON `details` array from an Azure Application Insights exception.
 2. Paste it into **Details JSON**. Formatting updates automatically.
 3. Read one table per exception: `id`, `outerId`, `severityLevel`, and `type` share the first row; `message` and `parsedStack` each occupy a subsequent full-width row.
-4. Use **Clear** to remove the input and output.
+4. Use **Copy rich text** for Jira's visual description editor, or **Copy wiki markup** for a description field that accepts Jira wiki notation. Both buttons copy all exceptions.
+5. Use **Clear** to remove the input and output.
+
+Rich-text copying supplies HTML tables and a readable plain-text alternative. The receiving editor controls which formatting it retains. Wiki output uses a four-cell metadata table followed by the message and a stack code block for each exception, avoiding merged-cell markup. Wiki syntax in messages and metadata is escaped.
+
+Clipboard access requires HTTPS or localhost and browser permission. If copying fails, the tool reports it and keeps the output available for manual selection. Copy buttons are disabled when there are no valid exceptions.
 
 Example input:
 

@@ -1,11 +1,41 @@
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { AppInsightsStackParser } from "./app-insights-stack-parser";
 
 const item = { id: "1", outerId: "0", severityLevel: "Error", type: "System.Exception", message: "First line\nSecond line", parsedStack: [{ method: "Example.Run", line: 12, fileName: "/src/Example.cs" }] };
 
 describe("App Insights Stack Parser", () => {
-  afterEach(cleanup);
+  afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+
+  it("copies wiki output, reports success, and disables copying for empty or invalid input", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal("navigator", { clipboard: { writeText } });
+    render(<AppInsightsStackParser />);
+    const wiki = screen.getByRole("button", { name: "Copy wiki markup" });
+    const rich = screen.getByRole("button", { name: "Copy rich text" });
+    expect(wiki).toBeDisabled();
+    expect(rich).toBeDisabled();
+    const input = screen.getByRole("textbox", { name: "Details JSON" });
+    fireEvent.change(input, { target: { value: JSON.stringify([item]) } });
+    expect(rich).toBeEnabled();
+    fireEvent.click(wiki);
+    expect(await screen.findByText(/Wiki markup copied/)).toBeInTheDocument();
+    expect(writeText).toHaveBeenCalledWith(expect.stringContaining("*id*: 1"));
+    fireEvent.change(input, { target: { value: "[" } });
+    expect(wiki).toBeDisabled();
+    expect(rich).toBeDisabled();
+    expect(screen.queryByText(/Wiki markup copied/)).not.toBeInTheDocument();
+  });
+
+  it("reports clipboard failure without discarding output", async () => {
+    vi.stubGlobal("navigator", { clipboard: { writeText: vi.fn().mockRejectedValue(new Error("Denied")) } });
+    render(<AppInsightsStackParser />);
+    fireEvent.change(screen.getByRole("textbox", { name: "Details JSON" }), { target: { value: JSON.stringify([item]) } });
+    fireEvent.click(screen.getByRole("button", { name: "Copy wiki markup" }));
+    expect(await screen.findByText(/Copy failed/)).toBeInTheDocument();
+    expect(screen.getByRole("table")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Copy wiki markup" })).toBeEnabled();
+  });
 
   it("renders each exception in exactly three rows with the requested field order", () => {
     render(<AppInsightsStackParser />);

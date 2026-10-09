@@ -1,12 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
+import { copyOutput } from "./export";
 import { formatStack, parseDetails } from "./parse";
 import styles from "./styles.module.css";
 
 export function AppInsightsStackParser() {
   const [input, setInput] = useState("");
+  const [copyStatus, setCopyStatus] = useState("");
+  const [copying, setCopying] = useState(false);
+  const revision = useRef(0);
+  function updateInput(value: string) {
+    revision.current += 1;
+    setInput(value);
+    setCopyStatus("");
+  }
   const result = useMemo(() => {
     if (!input.trim()) return { items: [], error: "" };
     try {
@@ -15,6 +24,20 @@ export function AppInsightsStackParser() {
       return { items: [], error: error instanceof Error ? error.message : "Unable to parse details." };
     }
   }, [input]);
+
+  async function copy(format: "rich" | "wiki") {
+    const currentRevision = revision.current;
+    setCopying(true);
+    setCopyStatus("");
+    try {
+      await copyOutput(result.items, format);
+      if (currentRevision === revision.current) setCopyStatus(format === "rich" ? "Rich text copied. Paste into Jira’s rich-text description editor." : "Wiki markup copied. Paste into Jira’s wiki-markup description editor.");
+    } catch {
+      if (currentRevision === revision.current) setCopyStatus("Copy failed. Use HTTPS or localhost and allow clipboard access. You can also select and copy the output manually.");
+    } finally {
+      setCopying(false);
+    }
+  }
 
   return (
     <main className={styles.page}>
@@ -27,9 +50,9 @@ export function AppInsightsStackParser() {
         <section className={styles.inputPanel} aria-labelledby="input-heading">
           <div className={styles.toolbar}>
             <h2 id="input-heading"><label htmlFor="details-input">Details JSON</label></h2>
-            <button type="button" disabled={!input} onClick={() => setInput("")}>Clear</button>
+            <button type="button" disabled={!input} onClick={() => updateInput("")}>Clear</button>
           </div>
-          <textarea id="details-input" value={input} onChange={(event) => setInput(event.target.value)} spellCheck={false} placeholder="Paste the details JSON array here…" aria-invalid={Boolean(result.error)} aria-describedby={result.error ? "parse-error" : undefined} />
+          <textarea id="details-input" value={input} onChange={(event) => updateInput(event.target.value)} spellCheck={false} placeholder="Paste the details JSON array here…" aria-invalid={Boolean(result.error)} aria-describedby={result.error ? "parse-error" : undefined} />
           {result.error && <p className={styles.error} id="parse-error" role="alert">{result.error}</p>}
         </section>
         <section className={styles.output} aria-labelledby="output-heading">
@@ -37,6 +60,11 @@ export function AppInsightsStackParser() {
             <h2 id="output-heading">Formatted exceptions</h2>
             <span role="status">{result.items.length} {result.items.length === 1 ? "item" : "items"}</span>
           </div>
+          <div className={styles.toolbar}>
+            <button type="button" disabled={!result.items.length || copying} onClick={() => void copy("rich")}>Copy rich text</button>
+            <button type="button" disabled={!result.items.length || copying} onClick={() => void copy("wiki")}>Copy wiki markup</button>
+          </div>
+          {copyStatus && <p role="status">{copyStatus}</p>}
           {!input.trim() && <p className={styles.empty}>Paste details to display one table per exception.</p>}
           {input.trim() && !result.error && !result.items.length && <p className={styles.empty}>The details array is empty.</p>}
           {result.items.map((item, index) => (

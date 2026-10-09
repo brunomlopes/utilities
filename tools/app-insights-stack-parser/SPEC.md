@@ -28,6 +28,16 @@ Keep the four metadata cells in a single row at all sizes, allowing long values 
 
 Recompute the output when input changes. Provide a labeled multiline input, accessible error and item-count status, and a Clear button. Use React Client Components, local state, and no network calls, storage, server endpoints, or new runtime dependencies. Support the existing static export and visual theme.
 
+## Clipboard exports
+
+- Provide **Copy rich text** and **Copy wiki markup** buttons above the output; each exports all exceptions in order.
+- Rich text writes `text/html` and `text/plain` in one clipboard item. HTML preserves the three-row table layout, multiline messages, and preformatted stack frames. Escape all telemetry before embedding it in HTML.
+- Wiki markup writes plain text with an exception heading, a four-cell metadata row, the message, and a `{code:none}` stack block. Long fields follow the table rather than using unsupported merged-cell syntax. Escape wiki syntax in metadata/messages and isolate literal code-macro delimiters inside stack data.
+- Disable copy buttons for empty/invalid output and while a write is pending. Report success only after clipboard completion; report failures without discarding output. Clear copy feedback when input changes, and ignore stale completion feedback after input changes.
+- Clipboard writes require a supported browser and secure context. Actual formatting on paste is controlled by the receiving editor; plain-text fallback is available for rich-text exports.
+
 ## Verification
+
+Test HTML escaping and table structure, wiki escaping and code blocks, exception order, both clipboard MIME types, disabled buttons, and clipboard failure/success feedback.
 
 Test frame formatting, numeric metadata, multiline messages, invalid input, empty arrays, the exact three-row table structure, replacement of stale output, clearing, and the catalog route. Run repository tests, lint, type checking, and the static build.
