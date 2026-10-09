@@ -40,7 +40,7 @@ describe("App Insights Stack Parser", () => {
     expect(rich).toBeEnabled();
     fireEvent.click(wiki);
     expect(await screen.findByText(/Wiki markup copied/)).toBeInTheDocument();
-    expect(writeText).toHaveBeenCalledWith(expect.stringContaining("*id*: 1"));
+    expect(writeText).toHaveBeenCalledWith(expect.stringContaining("*severityLevel*: Error"));
     fireEvent.change(input, { target: { value: "[" } });
     expect(wiki).toBeDisabled();
     expect(rich).toBeDisabled();
@@ -64,10 +64,10 @@ describe("App Insights Stack Parser", () => {
     expect(tables).toHaveLength(2);
     const rows = within(tables[0]).getAllByRole("row");
     expect(rows).toHaveLength(3);
-    expect(within(rows[0]).getAllByRole("cell").map((cell) => cell.textContent)).toEqual(["id1", "outerId0", "severityLevelError", "typeSystem.Exception"]);
-    expect(within(rows[1]).getByRole("cell")).toHaveAttribute("colspan", "4");
+    expect(within(rows[0]).getAllByRole("cell").map((cell) => cell.textContent)).toEqual(["severityLevelError", "typeSystem.Exception"]);
+    expect(within(rows[1]).getByRole("cell")).toHaveAttribute("colspan", "2");
     expect(rows[1].textContent).toBe(`message${item.message}`);
-    expect(within(rows[2]).getByRole("cell")).toHaveAttribute("colspan", "4");
+    expect(within(rows[2]).getByRole("cell")).toHaveAttribute("colspan", "2");
     expect(rows[2].textContent).toBe("parsedStack   at Example.Run in /src/Example.cs:line 12");
     expect(screen.getByRole("status")).toHaveTextContent("2 items");
   });

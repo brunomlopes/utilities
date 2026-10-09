@@ -16,13 +16,13 @@ Provide a browser-only utility at `/app-insights-stack-parser`, linked from the 
 
 Each table has an exception-number caption and exactly three rows:
 
-1. Four cells, in order: `id`, `outerId`, `severityLevel`, `type`. Each cell contains its field label and value.
+1. Two cells, in order: `severityLevel`, `type`. Each cell contains its field label and value.
 2. A full-width cell labeled `message`, preserving the original text and line breaks.
 3. A full-width cell labeled `parsedStack`, containing a monospace C#-style trace.
 
 Stack frames render as `   at Method in /path/File.cs:line 202`. Omit the file suffix when no filename is available and omit the line suffix when the line is absent or zero. Preserve method names exactly; do not invent parameter signatures or parentheses that are not present in telemetry. Display an explicit empty-state message for an empty stack.
 
-Keep the four metadata cells in a single row at all sizes, allowing long values to wrap. Wrap long messages, paths, and stack frames to avoid horizontal page overflow.
+Keep the two metadata cells in a single row at all sizes, allowing long values to wrap. Wrap long messages, paths, and stack frames to avoid horizontal page overflow.
 
 ## Interaction and architecture
 
@@ -34,7 +34,7 @@ Recompute the output when input changes. Provide a labeled multiline input, acce
 
 - Provide **Copy rich text** and **Copy wiki markup** buttons above the output; each exports all exceptions in order.
 - Rich text writes `text/html` and `text/plain` in one clipboard item. HTML preserves the three-row table layout, multiline messages, and preformatted stack frames. Escape all telemetry before embedding it in HTML.
-- Wiki markup writes plain text with an exception heading, a four-cell metadata row, the message, and a `{code:none}` stack block. Long fields follow the table rather than using unsupported merged-cell syntax. Escape wiki syntax in metadata/messages and isolate literal code-macro delimiters inside stack data.
+- Wiki markup writes plain text with an exception heading, a two-cell metadata row, the message, and a `{code:none}` stack block. Long fields follow the table rather than using unsupported merged-cell syntax. Escape wiki syntax in metadata/messages and isolate literal code-macro delimiters inside stack data.
 - Disable copy buttons for empty/invalid output and while a write is pending. Report success only after clipboard completion; report failures without discarding output. Clear copy feedback when input changes, and ignore stale completion feedback after input changes.
 - Clipboard writes require a supported browser and secure context. Actual formatting on paste is controlled by the receiving editor; plain-text fallback is available for rich-text exports.
 
@@ -44,4 +44,4 @@ Test HTML escaping and table structure, wiki escaping and code blocks, exception
 
 Test frame formatting, numeric metadata, multiline messages, invalid input, empty arrays, the exact three-row table structure, replacement of stale output, clearing, and the catalog route. Run repository tests, lint, type checking, and the static build.
 
-Labels refer to the parent’s one-based position in the input, even when the parent appears later. Roots and unresolved or ambiguous parent references use just `Exception N`. Original IDs remain in the metadata row.
+Labels refer to the parent’s one-based position in the input, even when the parent appears later. Roots and unresolved or ambiguous parent references use just `Exception N`. IDs are used to resolve relationships but are omitted from displayed and copied tables. The severity column fits its unbroken `severityLevel` label plus cell padding, leaving the remaining width for `type`.

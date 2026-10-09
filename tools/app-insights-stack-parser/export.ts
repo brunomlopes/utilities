@@ -1,7 +1,7 @@
 import { formatStack, type ExceptionDetails } from "./parse";
 import { exceptionLabels } from "./hierarchy";
 
-const fields = ["id", "outerId", "severityLevel", "type"] as const;
+const fields = ["severityLevel", "type"] as const;
 const stack = (item: ExceptionDetails) => formatStack(item.parsedStack) || "No stack frames available.";
 
 function escapeHtml(value: string | number): string {
@@ -20,7 +20,7 @@ export function toPlainText(items: ExceptionDetails[]): string {
 export function toRichText(items: ExceptionDetails[]): string {
   const labels = exceptionLabels(items);
   return items.map((item, index) => {
-    const content = `<h3>${escapeHtml(labels[index])}</h3><table border="1" style="border-collapse:collapse;width:100%"><tbody><tr>${fields.map((field) => `<td><strong>${field}</strong><br>${escapeHtml(item[field])}</td>`).join("")}</tr><tr><td colspan="4"><strong>message</strong><p>${escapeHtml(item.message).replace(/\r\n|\r|\n/g, "<br>")}</p></td></tr><tr><td colspan="4"><strong>parsedStack</strong><pre>${escapeHtml(stack(item))}</pre></td></tr></tbody></table>`;
+    const content = `<h3>${escapeHtml(labels[index])}</h3><table border="1" style="border-collapse:collapse;width:100%;overflow-wrap:anywhere"><tbody><tr>${fields.map((field) => `<td${field === "severityLevel" ? ' style="width:1%"' : ''}><strong${field === "severityLevel" ? ' style="white-space:nowrap"' : ''}>${field}</strong><br>${escapeHtml(item[field])}</td>`).join("")}</tr><tr><td colspan="2"><strong>message</strong><p>${escapeHtml(item.message).replace(/\r\n|\r|\n/g, "<br>")}</p></td></tr><tr><td colspan="2"><strong>parsedStack</strong><pre style="white-space:pre-wrap;overflow-wrap:anywhere">${escapeHtml(stack(item))}</pre></td></tr></tbody></table>`;
     return content;
   }).join("<p><br></p>");
 }

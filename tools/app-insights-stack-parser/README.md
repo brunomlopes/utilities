@@ -4,11 +4,11 @@ Open **App Insights Stack Parser** from the Utilities homepage or visit `/app-in
 
 1. Copy the JSON `details` array from an Azure Application Insights exception.
 2. Paste it into **Details JSON**. Formatting updates automatically.
-3. Read one table per exception: `id`, `outerId`, `severityLevel`, and `type` share the first row; `message` and `parsedStack` each occupy a subsequent full-width row.
+3. Read one table per exception: `severityLevel` and `type` share the first row; `message` and `parsedStack` each occupy a subsequent full-width row.
 4. Use **Copy rich text** for Jira's visual description editor, or **Copy wiki markup** for a description field that accepts Jira wiki notation. Both buttons copy all exceptions.
 5. Use **Clear** to remove the input and output.
 
-Rich-text copying supplies HTML tables and a readable plain-text alternative. The receiving editor controls which formatting it retains. Wiki output uses a four-cell metadata table followed by the message and a stack code block for each exception, avoiding merged-cell markup. Wiki syntax in messages and metadata is escaped.
+Rich-text copying supplies HTML tables and a readable plain-text alternative. The receiving editor controls which formatting it retains. Wiki output uses a two-cell metadata table followed by the message and a stack code block for each exception, avoiding merged-cell markup. Wiki syntax in messages and metadata is escaped.
 
 Clipboard access requires HTTPS or localhost and browser permission. If copying fails, the tool reports it and keeps the output available for manual selection. Copy buttons are disabled when there are no valid exceptions.
 
@@ -37,4 +37,4 @@ The displayed exceptions use one vertical line and 16 pixels of indentation per 
 
 From the repository root, run `npm test`, `npm run lint`, `npm run typecheck`, and `npm run build`. In this workspace use Node/npm from `C:\utils\nodejs-v22\tools`. The static export includes `out/app-insights-stack-parser/index.html`.
 
-Labels refer to the parent’s one-based position in the input, even when the parent appears later. Roots and unresolved or ambiguous parent references use just `Exception N`. Original IDs remain in the metadata row.
+Labels refer to the parent’s one-based position in the input, even when the parent appears later. Roots and unresolved or ambiguous parent references use just `Exception N`. IDs are used to resolve relationships but are omitted from displayed and copied tables. The severity column fits its unbroken `severityLevel` label plus cell padding, leaving the remaining width for `type`.

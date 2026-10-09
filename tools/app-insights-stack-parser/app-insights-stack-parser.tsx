@@ -76,15 +76,15 @@ export function AppInsightsStackParser() {
               {depths[index] > 0 && <span className={styles.depthLines} aria-hidden="true" style={{ width: `${depths[index] * 16}px` }} />}
             <table className={styles.table}>
               <caption>{labels[index]}{" "}<span className={styles.screenReaderOnly}>— nesting level {depths[index]}</span></caption>
-              <colgroup><col style={{ width: "15%" }} /><col style={{ width: "15%" }} /><col style={{ width: "15%" }} /><col style={{ width: "55%" }} /></colgroup>
+
               <tbody>
                 <tr>
-                  {(["id", "outerId", "severityLevel", "type"] as const).map((field) => (
+                  {(["severityLevel", "type"] as const).map((field) => (
                     <td key={field}><span className={styles.label}>{field}</span><span>{item[field]}</span></td>
                   ))}
                 </tr>
-                <tr><td colSpan={4}><span className={styles.label}>message</span><div className={styles.message}>{item.message}</div></td></tr>
-                <tr><td colSpan={4}><span className={styles.label}>parsedStack</span><pre>{formatStack(item.parsedStack) || "No stack frames available."}</pre></td></tr>
+                <tr><td colSpan={2}><span className={styles.label}>message</span><div className={styles.message}>{item.message}</div></td></tr>
+                <tr><td colSpan={2}><span className={styles.label}>parsedStack</span><pre>{formatStack(item.parsedStack) || "No stack frames available."}</pre></td></tr>
               </tbody>
             </table>
               </div>

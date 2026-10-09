@@ -36,7 +36,7 @@ describe("Jira exports", () => {
     const document = new DOMParser().parseFromString(toRichText([special]), "text/html");
     expect(document.querySelector("img")).toBeNull();
     expect(document.querySelector("h3")?.textContent).toBe("Exception 1");
-    expect(document.querySelector("table")?.textContent).toContain("<img>|x");
+    expect(document.querySelector("table")?.textContent).not.toContain("<img>|x");
     expect(toPlainText([special])).toContain("Exception 1\n");
     expect(toWikiMarkup([special])).toContain("h3. Exception 1\n");
   });
@@ -45,8 +45,8 @@ describe("Jira exports", () => {
     const tables = document.querySelectorAll("table");
     expect(tables).toHaveLength(2);
     expect(tables[0].rows).toHaveLength(3);
-    expect(tables[0].rows[0].cells).toHaveLength(4);
-    expect(tables[0].rows[1].cells[0].colSpan).toBe(4);
+    expect(tables[0].rows[0].cells).toHaveLength(2);
+    expect(tables[0].rows[1].cells[0].colSpan).toBe(2);
     expect(tables[0].rows[1].querySelector("br")).not.toBeNull();
     expect(tables[0].querySelector("pre")?.textContent).toBe("   at Example.Run in C:\\src\\Example.cs:line 12");
     expect(document.querySelector("img")).toBeNull();
@@ -56,15 +56,15 @@ describe("Jira exports", () => {
 
   it("exports wiki metadata and code blocks in exception order", () => {
     const output = toWikiMarkup([item, { ...item, id: "2" }]);
-    expect(output).toContain("|*id*: 1|*outerId*: 0|*severityLevel*: Error|*type*: System.Exception|");
+    expect(output).toContain("|*severityLevel*: Error|*type*: System.Exception|");
     expect(output).toContain("*message*\nFirst line\\\\ Second <line> & more");
     expect(output).toContain("{code:none}\n   at Example.Run in C:\\src\\Example.cs:line 12\n{code}");
     expect(output.indexOf("Exception 1")).toBeLessThan(output.indexOf("Exception 2"));
   });
 
   it("escapes wiki syntax in metadata/messages and isolates literal code delimiters", () => {
-    const output = toWikiMarkup([{ ...item, id: "a|b", message: "[link] *bold* {code}", parsedStack: [{ method: "{code}" }] }]);
-    expect(output).toContain("*id*: a\\|b");
+    const output = toWikiMarkup([{ ...item, type: "a|b", message: "[link] *bold* {code}", parsedStack: [{ method: "{code}" }] }]);
+    expect(output).toContain("*type*: a\\|b");
     expect(output).toContain("\\[link\\] \\*bold\\* \\{code\\}");
     expect(output).toContain("{code:none}\n   at \n{code}\n\\{code\\}\n{code:none}");
   });
