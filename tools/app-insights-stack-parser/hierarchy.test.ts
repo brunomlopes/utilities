@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { exceptionDepths } from "./hierarchy";
+import { exceptionDepths, exceptionLabels } from "./hierarchy";
 import type { ExceptionDetails } from "./parse";
 
 function items(links: [string | number, string | number][]): ExceptionDetails[] {
@@ -7,6 +7,12 @@ function items(links: [string | number, string | number][]): ExceptionDetails[] 
 }
 
 describe("exception nesting", () => {
+  it("labels parents by exception number, matching numeric IDs and omitting unresolved parents", () => {
+    expect(exceptionLabels(items([[20350564, 0], [47047218, "20350564"], ["orphan", "missing"]]))).toEqual([
+      "Exception 1", "Exception 2 (outer: Exception 1)", "Exception 3",
+    ]);
+    expect(exceptionLabels(items([["a", "0"], ["a", "0"], ["b", "a"]]))).toEqual(["Exception 1", "Exception 2", "Exception 3"]);
+  });
   it("follows parents with siblings and multiple roots, regardless of array order", () => {
     expect(exceptionDepths(items([["c", "b"], ["a", "0"], ["b", "a"], ["d", "a"], ["e", "0"]]))).toEqual([2, 0, 1, 1, 0]);
   });

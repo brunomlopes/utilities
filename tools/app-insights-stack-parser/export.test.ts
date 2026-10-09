@@ -22,7 +22,10 @@ describe("Jira exports", () => {
     expect(headings).toHaveLength(items.length);
     expect(tables).toHaveLength(items.length);
     items.forEach((_, index) => {
-      expect(headings[index].textContent).toBe(`Exception ${index + 1} (id: ${items[index].id} → outerId: ${items[index].outerId})`);
+      const labels = ["Exception 1 (outer: Exception 3)", "Exception 2", "Exception 3 (outer: Exception 2)", "Exception 4 (outer: Exception 2)", "Exception 5"];
+      expect(headings[index].textContent).toBe(labels[index]);
+      expect(toPlainText(items)).toContain(labels[index]);
+      expect(toWikiMarkup(items)).toContain(`h3. ${labels[index]}`);
       expect(headings[index].parentElement).toBe(document.body);
       expect(tables[index].parentElement).toBe(document.body);
     });
@@ -32,9 +35,10 @@ describe("Jira exports", () => {
     const special = { ...item, id: "<img>|x", outerId: "[parent]" };
     const document = new DOMParser().parseFromString(toRichText([special]), "text/html");
     expect(document.querySelector("img")).toBeNull();
-    expect(document.querySelector("h3")?.textContent).toBe("Exception 1 (id: <img>|x → outerId: [parent])");
-    expect(toPlainText([special])).toContain("Exception 1 (id: <img>|x → outerId: [parent])");
-    expect(toWikiMarkup([special])).toContain("h3. Exception 1 (id: <img>\\|x → outerId: \\[parent\\])");
+    expect(document.querySelector("h3")?.textContent).toBe("Exception 1");
+    expect(document.querySelector("table")?.textContent).toContain("<img>|x");
+    expect(toPlainText([special])).toContain("Exception 1\n");
+    expect(toWikiMarkup([special])).toContain("h3. Exception 1\n");
   });
   it("exports safe HTML tables with three rows, merged cells, and literal text", () => {
     const document = new DOMParser().parseFromString(toRichText([item, { ...item, message: '<img src=x onerror="alert(1)">', parsedStack: [] }]), "text/html");

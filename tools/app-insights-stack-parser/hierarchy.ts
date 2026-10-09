@@ -1,11 +1,12 @@
 import type { ExceptionDetails } from "./parse";
 
-export function exceptionLabel(item: ExceptionDetails, index: number): string {
-  return `Exception ${index + 1} (id: ${item.id} → outerId: ${item.outerId})`;
+export function exceptionLabels(items: ExceptionDetails[]): string[] {
+  return exceptionParents(items).map((parent, index) =>
+    `Exception ${index + 1}${parent === undefined ? "" : ` (outer: Exception ${parent + 1})`}`,
+  );
 }
 
-/** Resolve parent links independently of input order, without recursive traversal. */
-export function exceptionDepths(items: ExceptionDetails[]): number[] {
+function exceptionParents(items: ExceptionDetails[]): (number | undefined)[] {
   const indices = new Map<string, number>();
   const duplicates = new Set<string>();
   items.forEach((item, index) => {
@@ -13,10 +14,15 @@ export function exceptionDepths(items: ExceptionDetails[]): number[] {
     if (indices.has(id)) duplicates.add(id);
     indices.set(id, index);
   });
-  const parents = items.map((item) => {
+  return items.map((item) => {
     const outerId = String(item.outerId);
     return outerId === "0" || duplicates.has(outerId) ? undefined : indices.get(outerId);
   });
+}
+
+/** Resolve parent links independently of input order, without recursive traversal. */
+export function exceptionDepths(items: ExceptionDetails[]): number[] {
+  const parents = exceptionParents(items);
   const depths: (number | undefined)[] = items.map(() => undefined);
   items.forEach((_, start) => {
     if (depths[start] !== undefined) return;

@@ -31,8 +31,10 @@ All parsing happens in the browser. Input is not uploaded or saved. Malformed JS
 
 ## Exception nesting
 
-The displayed exceptions use one vertical line and 16 pixels of indentation per nesting level, covering both the caption and table. Levels follow `outerId` → `id` links, including parents later in the input; siblings share a level and separate roots have no lines. Input order stays unchanged. Numeric and string IDs match. `outerId: 0`, missing or ambiguous parents, and members of a cyclic parent chain are treated as roots. Rich-text copying uses flat headings and tables without nesting guides or indentation for cleaner pasting into Jira. All labels, including wiki markup and plain-text exports, show the relationship as `Exception N (id: X → outerId: Y)`.
+The displayed exceptions use one vertical line and 16 pixels of indentation per nesting level, covering both the caption and table. Levels follow `outerId` → `id` links, including parents later in the input; siblings share a level and separate roots have no lines. Input order stays unchanged. Numeric and string IDs match. `outerId: 0`, missing or ambiguous parents, and members of a cyclic parent chain are treated as roots. Rich-text copying uses flat headings and tables without nesting guides or indentation for cleaner pasting into Jira. All labels, including wiki markup and plain-text exports, show the relationship as `Exception N (outer: Exception M)`.
 
 ## Development
 
 From the repository root, run `npm test`, `npm run lint`, `npm run typecheck`, and `npm run build`. In this workspace use Node/npm from `C:\utils\nodejs-v22\tools`. The static export includes `out/app-insights-stack-parser/index.html`.
+
+Labels refer to the parent’s one-based position in the input, even when the parent appears later. Roots and unresolved or ambiguous parent references use just `Exception N`. Original IDs remain in the metadata row.

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo, useRef, useState } from "react";
 import { copyOutput } from "./export";
-import { exceptionDepths, exceptionLabel } from "./hierarchy";
+import { exceptionDepths, exceptionLabels } from "./hierarchy";
 import { formatStack, parseDetails } from "./parse";
 import styles from "./styles.module.css";
 
@@ -26,6 +26,7 @@ export function AppInsightsStackParser() {
     }
   }, [input]);
   const depths = useMemo(() => exceptionDepths(result.items), [result.items]);
+  const labels = useMemo(() => exceptionLabels(result.items), [result.items]);
 
   async function copy(format: "rich" | "wiki") {
     const currentRevision = revision.current;
@@ -74,7 +75,7 @@ export function AppInsightsStackParser() {
               <div className={styles.exceptionBody}>
               {depths[index] > 0 && <span className={styles.depthLines} aria-hidden="true" style={{ width: `${depths[index] * 16}px` }} />}
             <table className={styles.table}>
-              <caption>{exceptionLabel(item, index)}{" "}<span className={styles.screenReaderOnly}>— nesting level {depths[index]}</span></caption>
+              <caption>{labels[index]}{" "}<span className={styles.screenReaderOnly}>— nesting level {depths[index]}</span></caption>
               <colgroup><col style={{ width: "15%" }} /><col style={{ width: "15%" }} /><col style={{ width: "15%" }} /><col style={{ width: "55%" }} /></colgroup>
               <tbody>
                 <tr>
