@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMemo, useRef, useState } from "react";
 import { copyOutput } from "./export";
+import { exceptionDepths } from "./hierarchy";
 import { formatStack, parseDetails } from "./parse";
 import styles from "./styles.module.css";
 
@@ -24,6 +25,7 @@ export function AppInsightsStackParser() {
       return { items: [], error: error instanceof Error ? error.message : "Unable to parse details." };
     }
   }, [input]);
+  const depths = useMemo(() => exceptionDepths(result.items), [result.items]);
 
   async function copy(format: "rich" | "wiki") {
     const currentRevision = revision.current;
@@ -68,8 +70,11 @@ export function AppInsightsStackParser() {
           {!input.trim() && <p className={styles.empty}>Paste details to display one table per exception.</p>}
           {input.trim() && !result.error && !result.items.length && <p className={styles.empty}>The details array is empty.</p>}
           {result.items.map((item, index) => (
-            <table className={styles.table} key={index}>
-              <caption>Exception {index + 1}</caption>
+            <div className={styles.exception} key={index}>
+              <div className={styles.exceptionBody}>
+              {depths[index] > 0 && <span className={styles.depthLines} aria-hidden="true" style={{ width: `${depths[index] * 16}px` }} />}
+            <table className={styles.table}>
+              <caption>Exception {index + 1}{" "}<span className={styles.screenReaderOnly}>— nesting level {depths[index]}</span></caption>
               <colgroup><col style={{ width: "15%" }} /><col style={{ width: "15%" }} /><col style={{ width: "15%" }} /><col style={{ width: "55%" }} /></colgroup>
               <tbody>
                 <tr>
@@ -81,6 +86,8 @@ export function AppInsightsStackParser() {
                 <tr><td colSpan={4}><span className={styles.label}>parsedStack</span><pre>{formatStack(item.parsedStack) || "No stack frames available."}</pre></td></tr>
               </tbody>
             </table>
+              </div>
+            </div>
           ))}
         </section>
       </div>

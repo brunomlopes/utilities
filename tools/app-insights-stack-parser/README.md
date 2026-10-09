@@ -29,6 +29,10 @@ Messages retain line breaks. Methods retain their supplied names; assembly and f
 
 All parsing happens in the browser. Input is not uploaded or saved. Malformed JSON and invalid fields produce an error instead of partial output. See [SPEC.md](SPEC.md) for the input and rendering contract.
 
+## Exception nesting
+
+The displayed exceptions use one vertical line and 16 pixels of indentation per nesting level, covering both the caption and table. Levels follow `outerId` → `id` links, including parents later in the input; siblings share a level and separate roots have no lines. Input order stays unchanged. Numeric and string IDs match. `outerId: 0`, missing or ambiguous parents, and members of a cyclic parent chain are treated as roots. Clipboard formats remain as described above.
+
 ## Development
 
 From the repository root, run `npm test`, `npm run lint`, `npm run typecheck`, and `npm run build`. In this workspace use Node/npm from `C:\utils\nodejs-v22\tools`. The static export includes `out/app-insights-stack-parser/index.html`.

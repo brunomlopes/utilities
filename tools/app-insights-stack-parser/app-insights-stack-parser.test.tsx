@@ -5,6 +5,25 @@ import { AppInsightsStackParser } from "./app-insights-stack-parser";
 const item = { id: "1", outerId: "0", severityLevel: "Error", type: "System.Exception", message: "First line\nSecond line", parsedStack: [{ method: "Example.Run", line: 12, fileName: "/src/Example.cs" }] };
 
 describe("App Insights Stack Parser", () => {
+  it("indents the caption and table by relationship depth while retaining input order", () => {
+    render(<AppInsightsStackParser />);
+    const exceptions = [
+      { ...item, id: "grandchild", outerId: "child" },
+      { ...item, id: "root", outerId: "0" },
+      { ...item, id: "child", outerId: "root" },
+      { ...item, id: "sibling", outerId: "root" },
+    ];
+    fireEvent.change(screen.getByRole("textbox", { name: "Details JSON" }), { target: { value: JSON.stringify(exceptions) } });
+    const tables = screen.getAllByRole("table");
+    [2, 0, 1, 1].forEach((depth, index) => {
+      expect(tables[index]).toHaveAccessibleName(`Exception ${index + 1} — nesting level ${depth}`);
+      const lines = tables[index].previousElementSibling;
+      if (depth) {
+        expect(lines).toHaveAttribute("aria-hidden", "true");
+        expect(lines).toHaveStyle({ width: `${depth * 16}px` });
+      } else expect(lines).toBeNull();
+    });
+  });
   afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
   it("copies wiki output, reports success, and disables copying for empty or invalid input", async () => {

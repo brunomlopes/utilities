@@ -26,6 +26,8 @@ Keep the four metadata cells in a single row at all sizes, allowing long values 
 
 ## Interaction and architecture
 
+Display one vertical guide per ancestor and indent the caption and table together by 16 pixels per level. Resolve `outerId` against `id` across the entire array, preserving display order and treating numeric/string equivalents as the same ID. Roots have no guides; siblings share depth. An outer ID of zero, an unresolved parent, or an ambiguous duplicate parent ID establishes a root. Cycle members (including self-links) are roots; their non-cyclic descendants still receive relative depth. Use an iterative traversal to support deep chains, expose the level to assistive technology, and contain horizontal overflow for very deep indentation. This visual hierarchy does not change clipboard formats.
+
 Recompute the output when input changes. Provide a labeled multiline input, accessible error and item-count status, and a Clear button. Use React Client Components, local state, and no network calls, storage, server endpoints, or new runtime dependencies. Support the existing static export and visual theme.
 
 ## Clipboard exports
