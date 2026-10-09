@@ -1,4 +1,5 @@
 import { formatStack, type ExceptionDetails } from "./parse";
+import { exceptionDepths, exceptionLabel } from "./hierarchy";
 
 const fields = ["id", "outerId", "severityLevel", "type"] as const;
 const stack = (item: ExceptionDetails) => formatStack(item.parsedStack) || "No stack frames available.";
@@ -12,11 +13,16 @@ function escapeWiki(value: string | number): string {
 }
 
 export function toPlainText(items: ExceptionDetails[]): string {
-  return items.map((item, index) => `Exception ${index + 1}\n${fields.map((field) => `${field}: ${item[field]}`).join(" | ")}\n\nmessage\n${item.message}\n\nparsedStack\n${stack(item)}`).join("\n\n");
+  return items.map((item, index) => `${exceptionLabel(item, index)}\n${fields.map((field) => `${field}: ${item[field]}`).join(" | ")}\n\nmessage\n${item.message}\n\nparsedStack\n${stack(item)}`).join("\n\n");
 }
 
 export function toRichText(items: ExceptionDetails[]): string {
-  return items.map((item, index) => `<h3>Exception ${index + 1}</h3><table border="1" style="border-collapse:collapse;width:100%"><tbody><tr>${fields.map((field) => `<td><strong>${field}</strong><br>${escapeHtml(item[field])}</td>`).join("")}</tr><tr><td colspan="4"><strong>message</strong><p>${escapeHtml(item.message).replace(/\r\n|\r|\n/g, "<br>")}</p></td></tr><tr><td colspan="4"><strong>parsedStack</strong><pre>${escapeHtml(stack(item))}</pre></td></tr></tbody></table>`).join("<p><br></p>");
+  const depths = exceptionDepths(items);
+  const guide = '<blockquote style="margin:0;border-left:2px solid #385f57;padding:0 0 0 14px">';
+  return items.map((item, index) => {
+    const content = `<h3>${escapeHtml(exceptionLabel(item, index))}</h3><table border="1" style="border-collapse:collapse;width:100%"><tbody><tr>${fields.map((field) => `<td><strong>${field}</strong><br>${escapeHtml(item[field])}</td>`).join("")}</tr><tr><td colspan="4"><strong>message</strong><p>${escapeHtml(item.message).replace(/\r\n|\r|\n/g, "<br>")}</p></td></tr><tr><td colspan="4"><strong>parsedStack</strong><pre>${escapeHtml(stack(item))}</pre></td></tr></tbody></table>`;
+    return guide.repeat(depths[index]) + content + "</blockquote>".repeat(depths[index]);
+  }).join("<p><br></p>");
 }
 
 function wikiCode(value: string): string {
@@ -28,7 +34,7 @@ function wikiCode(value: string): string {
 
 export function toWikiMarkup(items: ExceptionDetails[]): string {
   // Jira wiki tables cannot merge cells; put long fields below the metadata table.
-  return items.map((item, index) => `h3. Exception ${index + 1}\n\n|${fields.map((field) => `*${field}*: ${escapeWiki(item[field])}`).join("|")}|\n\n*message*\n${escapeWiki(item.message)}\n\n*parsedStack*\n${wikiCode(stack(item))}`).join("\n\n");
+  return items.map((item, index) => `h3. ${escapeWiki(exceptionLabel(item, index))}\n\n|${fields.map((field) => `*${field}*: ${escapeWiki(item[field])}`).join("|")}|\n\n*message*\n${escapeWiki(item.message)}\n\n*parsedStack*\n${wikiCode(stack(item))}`).join("\n\n");
 }
 
 export async function copyOutput(items: ExceptionDetails[], format: "rich" | "wiki"): Promise<void> {

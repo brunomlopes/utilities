@@ -16,7 +16,7 @@ describe("App Insights Stack Parser", () => {
     fireEvent.change(screen.getByRole("textbox", { name: "Details JSON" }), { target: { value: JSON.stringify(exceptions) } });
     const tables = screen.getAllByRole("table");
     [2, 0, 1, 1].forEach((depth, index) => {
-      expect(tables[index]).toHaveAccessibleName(`Exception ${index + 1} — nesting level ${depth}`);
+      expect(tables[index]).toHaveAccessibleName(`Exception ${index + 1} (id: ${exceptions[index].id} → outerId: ${exceptions[index].outerId}) — nesting level ${depth}`);
       const lines = tables[index].previousElementSibling;
       if (depth) {
         expect(lines).toHaveAttribute("aria-hidden", "true");

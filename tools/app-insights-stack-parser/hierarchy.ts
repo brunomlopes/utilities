@@ -1,5 +1,9 @@
 import type { ExceptionDetails } from "./parse";
 
+export function exceptionLabel(item: ExceptionDetails, index: number): string {
+  return `Exception ${index + 1} (id: ${item.id} → outerId: ${item.outerId})`;
+}
+
 /** Resolve parent links independently of input order, without recursive traversal. */
 export function exceptionDepths(items: ExceptionDetails[]): number[] {
   const indices = new Map<string, number>();

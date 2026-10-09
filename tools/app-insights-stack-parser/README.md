@@ -31,7 +31,7 @@ All parsing happens in the browser. Input is not uploaded or saved. Malformed JS
 
 ## Exception nesting
 
-The displayed exceptions use one vertical line and 16 pixels of indentation per nesting level, covering both the caption and table. Levels follow `outerId` → `id` links, including parents later in the input; siblings share a level and separate roots have no lines. Input order stays unchanged. Numeric and string IDs match. `outerId: 0`, missing or ambiguous parents, and members of a cyclic parent chain are treated as roots. Clipboard formats remain as described above.
+The displayed exceptions use one vertical line and 16 pixels of indentation per nesting level, covering both the caption and table. Levels follow `outerId` → `id` links, including parents later in the input; siblings share a level and separate roots have no lines. Input order stays unchanged. Numeric and string IDs match. `outerId: 0`, missing or ambiguous parents, and members of a cyclic parent chain are treated as roots. Rich-text copying includes the same nesting guides around each heading and table. All labels, including wiki markup and plain-text exports, show the relationship as `Exception N (id: X → outerId: Y)`.
 
 ## Development
 

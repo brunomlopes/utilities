@@ -7,6 +7,40 @@ const item: ExceptionDetails = { id: "1", outerId: "0", severityLevel: "Error", 
 afterEach(() => vi.unstubAllGlobals());
 
 describe("Jira exports", () => {
+  it("indents rich-text headings and tables using relationship depth, including siblings and out-of-order parents", () => {
+    const items = [
+      { ...item, id: "3", outerId: "2" },
+      { ...item, id: "1", outerId: "0" },
+      { ...item, id: "2", outerId: "1" },
+      { ...item, id: "4", outerId: "1" },
+      { ...item, id: "5", outerId: "missing" },
+    ];
+    const document = new DOMParser().parseFromString(toRichText(items), "text/html");
+    const headings = document.querySelectorAll("h3");
+    const tables = document.querySelectorAll("table");
+    [2, 0, 1, 1, 0].forEach((depth, index) => {
+      expect(headings[index].textContent).toBe(`Exception ${index + 1} (id: ${items[index].id} → outerId: ${items[index].outerId})`);
+      expect(headings[index].parentElement).toBe(tables[index].parentElement);
+      let ancestor = headings[index].parentElement;
+      let guides = 0;
+      while (ancestor?.tagName === "BLOCKQUOTE") {
+        expect(ancestor.style.borderLeftWidth).toBe("2px");
+        expect(ancestor.style.paddingLeft).toBe("14px");
+        guides += 1;
+        ancestor = ancestor.parentElement;
+      }
+      expect(guides).toBe(depth);
+    });
+  });
+
+  it("includes literal relationship labels safely in all copied formats", () => {
+    const special = { ...item, id: "<img>|x", outerId: "[parent]" };
+    const document = new DOMParser().parseFromString(toRichText([special]), "text/html");
+    expect(document.querySelector("img")).toBeNull();
+    expect(document.querySelector("h3")?.textContent).toBe("Exception 1 (id: <img>|x → outerId: [parent])");
+    expect(toPlainText([special])).toContain("Exception 1 (id: <img>|x → outerId: [parent])");
+    expect(toWikiMarkup([special])).toContain("h3. Exception 1 (id: <img>\\|x → outerId: \\[parent\\])");
+  });
   it("exports safe HTML tables with three rows, merged cells, and literal text", () => {
     const document = new DOMParser().parseFromString(toRichText([item, { ...item, message: '<img src=x onerror="alert(1)">', parsedStack: [] }]), "text/html");
     const tables = document.querySelectorAll("table");

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo, useRef, useState } from "react";
 import { copyOutput } from "./export";
-import { exceptionDepths } from "./hierarchy";
+import { exceptionDepths, exceptionLabel } from "./hierarchy";
 import { formatStack, parseDetails } from "./parse";
 import styles from "./styles.module.css";
 
@@ -74,7 +74,7 @@ export function AppInsightsStackParser() {
               <div className={styles.exceptionBody}>
               {depths[index] > 0 && <span className={styles.depthLines} aria-hidden="true" style={{ width: `${depths[index] * 16}px` }} />}
             <table className={styles.table}>
-              <caption>Exception {index + 1}{" "}<span className={styles.screenReaderOnly}>— nesting level {depths[index]}</span></caption>
+              <caption>{exceptionLabel(item, index)}{" "}<span className={styles.screenReaderOnly}>— nesting level {depths[index]}</span></caption>
               <colgroup><col style={{ width: "15%" }} /><col style={{ width: "15%" }} /><col style={{ width: "15%" }} /><col style={{ width: "55%" }} /></colgroup>
               <tbody>
                 <tr>
