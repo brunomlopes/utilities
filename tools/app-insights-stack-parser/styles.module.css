@@ -1,0 +1,26 @@
+.page { max-width: 1800px; margin: 0 auto; padding: 32px; }
+.header { margin-bottom: 28px; }
+.header a { color: var(--accent-dark); }
+.header h1 { font-size: clamp(1.8rem, 3vw, 2.7rem); margin-bottom: 12px; }
+.header p { color: var(--muted); max-width: 850px; line-height: 1.6; }
+.workspace { display: grid; grid-template-columns: minmax(260px, 1fr) minmax(0, 2fr); gap: 24px; align-items: start; }
+.inputPanel, .output { min-width: 0; background: var(--panel); border: 1px solid var(--line); padding: 20px; box-shadow: var(--shadow); }
+.toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+.toolbar h2 { margin: 0; font-size: 1.1rem; }
+.toolbar span { color: var(--muted); white-space: nowrap; }
+.toolbar button { background: var(--panel-muted); border: 1px solid var(--line-strong); color: var(--ink); padding: 8px 14px; cursor: pointer; }
+.toolbar button:disabled { opacity: .5; cursor: default; }
+.inputPanel textarea { width: 100%; min-height: 440px; resize: vertical; padding: 14px; border: 1px solid var(--line-strong); background: var(--panel-muted); color: var(--ink); font: 13px/1.6 ui-monospace, monospace; }
+.page :focus-visible { outline: 2px solid var(--teal); outline-offset: 3px; }
+.table { width: 100%; table-layout: fixed; border-collapse: collapse; margin-bottom: 24px; font-size: .9rem; }
+.table:last-child { margin-bottom: 0; }
+.table caption { text-align: left; font-weight: 700; padding: 8px 0; color: var(--teal); }
+.table td { border: 1px solid var(--line); padding: 12px; vertical-align: top; overflow-wrap: anywhere; }
+.table tr:first-child { background: var(--panel-muted); }
+.label { display: block; font-size: .75rem; font-weight: 700; color: var(--muted); margin-bottom: 8px; }
+.message { white-space: pre-wrap; line-height: 1.6; }
+.table pre { white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; font: 13px/1.7 ui-monospace, monospace; }
+.empty { color: var(--muted); line-height: 1.6; }
+.error { color: var(--error); line-height: 1.5; }
+@media (max-width: 1000px) { .workspace { grid-template-columns: 1fr; } .inputPanel textarea { min-height: 240px; } }
+@media (max-width: 600px) { .page { padding: 16px; } .inputPanel, .output { padding: 12px; } .table td { padding: 8px; } }

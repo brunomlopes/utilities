@@ -40,6 +40,11 @@ describe("Utilities homepage", () => {
   it("lists Certificate Inspector and shows the updated tool count", () => {
     render(<Home />);
     expect(screen.getByRole("link", { name: /Certificate Inspector/i })).toHaveAttribute("href", "/certificate-inspector");
-    expect(screen.getAllByText("04")).toHaveLength(2);
+    expect(screen.getAllByText("05")).toHaveLength(2);
+  });
+
+  it("lists App Insights Stack Parser with its route", () => {
+    render(<Home />);
+    expect(screen.getByRole("link", { name: /App Insights Stack Parser/i })).toHaveAttribute("href", "/app-insights-stack-parser");
   });
 });

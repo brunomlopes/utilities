@@ -20,6 +20,8 @@ npm run build
 
 ## Utilities
 
+- [App Insights Stack Parser](tools/app-insights-stack-parser/README.md) — format exception details into one table per exception with C# stack traces.
+
 - [Certificate Inspector](tools/certificate-inspector/README.md) — inspect PEM/DER certificates and encrypted PKCS#12 bundles, with private-key metadata only.
 
 - [Excel–Sheets Interchange](tools/excel-sheets-interchange/README.md) — convert pasted spreadsheet numbers between English and Portuguese cultures.

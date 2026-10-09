@@ -34,4 +34,11 @@ export const utilities = [
       "Inspect PKI certificates, PEM/DER files, and password-protected PKCS#12 bundles locally, with private-key metadata only.",
     href: "/certificate-inspector",
   },
+  {
+    slug: "app-insights-stack-parser",
+    title: "App Insights Stack Parser",
+    description:
+      "Format Azure App Insights exception details into individual tables with readable C# stack traces.",
+    href: "/app-insights-stack-parser",
+  },
 ] as const satisfies readonly ToolDefinition[];
