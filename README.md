@@ -20,7 +20,7 @@ npm run build
 
 ## Utilities
 
-- [Cheat Sheets](tools/cheat-sheets/README.md) — task-based command references for tmux and Vim.
+- [Cheat Sheets](tools/cheat-sheets/README.md) — command references for tmux, Vim, nftables, and conntrack.
 
 - [App Insights Stack Parser](tools/app-insights-stack-parser/README.md) — format exception details into one table per exception with C# stack traces.
 

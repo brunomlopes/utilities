@@ -44,7 +44,7 @@ export const utilities = [
   {
     slug: "cheat-sheets",
     title: "Cheat Sheets",
-    description: "Quick references for everyday tmux and Vim commands, grouped by task.",
+    description: "Quick references for tmux, Vim, nftables, and conntrack commands, grouped by task.",
     href: "/cheat-sheets",
   },
 ] as const satisfies readonly ToolDefinition[];

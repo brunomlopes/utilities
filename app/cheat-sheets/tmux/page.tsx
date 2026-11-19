@@ -3,6 +3,6 @@
 import { CheatSheetPage } from "@/tools/cheat-sheets/cheat-sheets";
 import { sheets } from "@/tools/cheat-sheets/sheets";
 
-export default function TmuxPage() {
+export default function Page() {
   return <CheatSheetPage sheet={sheets[0]} />;
 }
