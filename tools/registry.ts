@@ -41,4 +41,10 @@ export const utilities = [
       "Format Azure App Insights exception details into individual tables with readable C# stack traces.",
     href: "/app-insights-stack-parser",
   },
+  {
+    slug: "cheat-sheets",
+    title: "Cheat Sheets",
+    description: "Quick references for everyday tmux and Vim commands, grouped by task.",
+    href: "/cheat-sheets",
+  },
 ] as const satisfies readonly ToolDefinition[];
